@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, BarChart3, Eye } from 'lucide-react';
+import { PlusCircle, BarChart3 } from 'lucide-react';
 
 // Importar componentes
 import { ProfileModal, SubjectModal, ItemDetailsModal, SyllabusModal, ProgressReportModal, SessionHistoryModal } from './components/Modals';
@@ -612,96 +612,36 @@ function App() {
   // Interface principal
   return (
     <div className="app-container">
-      {/* Header */}
-      <AppHeader
-        setIsProgressReportModalOpen={setIsProgressReportModalOpen}
-        handleExportData={handleExportData}
-        handleImportData={handleImportData}
-        studyProfiles={studyProfiles}
-        activeProfileId={activeProfileId}
-        setActiveProfileId={handleSetActiveProfile}
-        onOpenProfileModal={() => setIsProfileModalOpen(true)}
-      />
+      <div className="app-content">
+        {/* Header */}
+        <AppHeader
+          setIsProgressReportModalOpen={setIsProgressReportModalOpen}
+          handleExportData={handleExportData}
+          handleImportData={handleImportData}
+          studyProfiles={studyProfiles}
+          activeProfileId={activeProfileId}
+          setActiveProfileId={handleSetActiveProfile}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        />
 
-      {/* Breadcrumb e Estatísticas */}
-      {activeProfileId && (
-        <div className="navigation-section">
-          <Breadcrumb />
-          <QuickStats />
-        </div>
-      )}
-
-      {/* Conteúdo Principal */}
-      {!activeProfileId ? (
-        <div className="card">
-          <div className="welcome-section">
-            <h2>Bem-vindo ao Organizador de Estudos!</h2>
-            <p>Crie ou selecione um perfil de concurso para começar a organizar seus estudos.</p>
-            <button
-              className="btn btn-primary"
-              onClick={() => setIsProfileModalOpen(true)}
-            >
-              <PlusCircle size={20} />
-              Criar Primeiro Perfil
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Estatísticas Rápidas */}
+        {/* Conteúdo Principal */}
+        {!activeProfileId ? (
           <div className="card">
-            <h2>
-              <BarChart3 size={20} />
-              Estatísticas Rápidas
-            </h2>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-value">{activeSessions.reduce((total, session) => total + (session.duration || 0), 0) / 60}h</div>
-                <div className="stat-label">Total Estudado</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{activeSessions.length}</div>
-                <div className="stat-label">Sessões Registradas</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">
-                  {activeSyllabusItems.length > 0 
-                    ? (activeSyllabusItems.reduce((sum, item) => sum + (item.accuracy || 0), 0) / activeSyllabusItems.length).toFixed(0)
-                    : 0}%
-                </div>
-                <div className="stat-label">Média de Acerto Geral</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{getNextReviewDate()}</div>
-                <div className="stat-label">Próxima Revisão Urgente</div>
-              </div>
+            <div className="welcome-section">
+              <h2>Bem-vindo ao Organizador de Estudos!</h2>
+              <p>Crie ou selecione um perfil de concurso para começar a organizar seus estudos.</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => setIsProfileModalOpen(true)}
+              >
+                <PlusCircle size={20} />
+                Criar Primeiro Perfil
+              </button>
             </div>
-
-            {/* Ciclo de Estudos Visual */}
-            {activeSubjects.length > 0 && (
-              <div className="study-cycle-indicator">
-                <div className="study-cycle-header">
-                  <span className="study-cycle-icon">🔄</span>
-                  <span className="study-cycle-title">Ciclo de Estudos Visual</span>
-                </div>
-                <div className="study-cycle-subjects">
-                  {activeSubjects.map((subject, index) => (
-                    <div
-                      key={subject.id}
-                      className="study-cycle-item"
-                      style={{
-                        backgroundColor: subject.color + '20',
-                        borderLeft: `3px solid ${subject.color}`
-                      }}
-                    >
-                      <span className="cycle-subject-name">{subject.name}</span>
-                      <span className="cycle-subject-weight">Peso: {subject.weight || 1}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+        ) : (
+        <>
+
 
           {activeSubjects.length === 0 ? (
             <div className="card">
@@ -719,14 +659,21 @@ function App() {
             </div>
           ) : (
             <>
-              {/* Calendário de Estudos */}
+              {/* Visão Geral das Matérias e Edital */}
               <div className="card">
-                <Calendar
-                  studySessions={activeSessions}
+                <h2>
+                  Visão Geral das Matérias e Edital
+                </h2>
+                <SubjectsOverview
+                  subjects={activeSubjects}
                   syllabusItems={activeSyllabusItems}
-                  onDateClick={(date) => {
-                    // Aqui pode abrir um modal com detalhes do dia
-                  }}
+                  setSyllabusItems={setSyllabusItems}
+                  expandedSubjects={expandedSubjects}
+                  setExpandedSubjects={setExpandedSubjects}
+                  getSubjectStudyTime={getSubjectStudyTime}
+                  setSelectedSyllabusItem={setSelectedSyllabusItem}
+                  setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
+                  studySessions={activeSessions}
                 />
               </div>
 
@@ -748,23 +695,17 @@ function App() {
                 setSelectedSubjectForHistory={setSelectedSubjectForHistory}
               />
 
-              {/* Visão Geral das Matérias e Edital */}
+              {/* Calendário de Estudos - Fixed size, last item */}
               <div className="card">
-                <h2>
-                  <Eye size={20} />
-                  Visão Geral das Matérias e Edital
-                </h2>
-                <SubjectsOverview
-                  subjects={activeSubjects}
-                  syllabusItems={activeSyllabusItems}
-                  setSyllabusItems={setSyllabusItems}
-                  expandedSubjects={expandedSubjects}
-                  setExpandedSubjects={setExpandedSubjects}
-                  getSubjectStudyTime={getSubjectStudyTime}
-                  setSelectedSyllabusItem={setSelectedSyllabusItem}
-                  setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
-                  studySessions={activeSessions}
-                />
+                <div className="calendar-fixed-container">
+                  <Calendar
+                    studySessions={activeSessions}
+                    syllabusItems={activeSyllabusItems}
+                    onDateClick={(date) => {
+                      // Aqui pode abrir um modal com detalhes do dia
+                    }}
+                  />
+                </div>
               </div>
             </>
           )}
@@ -871,6 +812,7 @@ function App() {
         onConfirm={confirmationDialog.onConfirm}
         onCancel={() => setConfirmationDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
       />
+      </div>
     </div>
   );
 }

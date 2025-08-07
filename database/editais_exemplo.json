@@ -1,0 +1,152 @@
+[
+  {
+    "id": 1734476400000,
+    "nome": "Edital nº 001/2024",
+    "concurso": "Analista Judiciário - TRT 15ª Região",
+    "orgao": "Tribunal Regional do Trabalho da 15ª Região",
+    "banca": "FCC",
+    "dataProva": "2025-05-15",
+    "inscricoesAte": "2025-03-15",
+    "materias": [
+      {
+        "id": 1734476401000,
+        "nome": "Direito Constitucional",
+        "peso": 3
+      },
+      {
+        "id": 1734476402000,
+        "nome": "Direito Administrativo", 
+        "peso": 3
+      },
+      {
+        "id": 1734476403000,
+        "nome": "Direito do Trabalho",
+        "peso": 4
+      },
+      {
+        "id": 1734476404000,
+        "nome": "Direito Processual do Trabalho",
+        "peso": 4
+      },
+      {
+        "id": 1734476405000,
+        "nome": "Português",
+        "peso": 2
+      }
+    ],
+    "itensEdital": [
+      {
+        "id": 1734476410000,
+        "nome": "1. Direitos e garantias fundamentais"
+      },
+      {
+        "id": 1734476411000,
+        "nome": "2. Organização do Estado"
+      },
+      {
+        "id": 1734476412000,
+        "nome": "3. Administração Pública"
+      },
+      {
+        "id": 1734476413000,
+        "nome": "4. Servidores públicos"
+      },
+      {
+        "id": 1734476414000,
+        "nome": "5. Contrato individual de trabalho"
+      },
+      {
+        "id": 1734476415000,
+        "nome": "6. Organização sindical"
+      },
+      {
+        "id": 1734476416000,
+        "nome": "7. Procedimento ordinário trabalhista"
+      },
+      {
+        "id": 1734476417000,
+        "nome": "8. Recursos trabalhistas"
+      }
+    ],
+    "dataAtualização": "2024-12-17T21:00:00.000Z"
+  },
+  {
+    "id": 1734476500000,
+    "nome": "Edital nº 002/2024",
+    "concurso": "Técnico Judiciário - TRF 3ª Região",
+    "orgao": "Tribunal Regional Federal da 3ª Região",
+    "banca": "CESPE",
+    "dataProva": "2025-04-20",
+    "inscricoesAte": "2025-02-20",
+    "materias": [
+      {
+        "id": 1734476501000,
+        "nome": "Direito Constitucional",
+        "peso": 2
+      },
+      {
+        "id": 1734476502000,
+        "nome": "Direito Administrativo",
+        "peso": 2
+      },
+      {
+        "id": 1734476503000,
+        "nome": "Português",
+        "peso": 3
+      },
+      {
+        "id": 1734476504000,
+        "nome": "Informática",
+        "peso": 2
+      },
+      {
+        "id": 1734476505000,
+        "nome": "Raciocínio Lógico",
+        "peso": 1
+      }
+    ],
+    "itensEdital": [
+      {
+        "id": 1734476510000,
+        "nome": "1. Princípios constitucionais"
+      },
+      {
+        "id": 1734476511000,
+        "nome": "2. Direitos sociais"
+      },
+      {
+        "id": 1734476512000,
+        "nome": "3. Organização administrativa"
+      },
+      {
+        "id": 1734476513000,
+        "nome": "4. Atos administrativos"
+      },
+      {
+        "id": 1734476514000,
+        "nome": "5. Licitações e contratos"
+      },
+      {
+        "id": 1734476515000,
+        "nome": "6. Interpretação de texto"
+      },
+      {
+        "id": 1734476516000,
+        "nome": "7. Gramática"
+      },
+      {
+        "id": 1734476517000,
+        "nome": "8. Sistema operacional Windows"
+      },
+      {
+        "id": 1734476518000,
+        "nome": "9. Microsoft Office"
+      },
+      {
+        "id": 1734476519000,
+        "nome": "10. Proposições lógicas"
+      }
+    ],
+    "dataAtualização": "2024-12-17T21:10:00.000Z"
+  }
+]
