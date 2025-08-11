@@ -71,8 +71,6 @@ export const ProfileModal = ({
                 className="form-input"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
                 placeholder=""
                 required
               />
@@ -84,8 +82,6 @@ export const ProfileModal = ({
                 className="form-textarea"
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
                 placeholder="Descrição do concurso..."
                 rows="3"
               />
@@ -98,8 +94,6 @@ export const ProfileModal = ({
                 className="form-input"
                 value={formData.examDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, examDate: e.target.value }))}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
               />
             </div>
 
@@ -110,8 +104,6 @@ export const ProfileModal = ({
                 className="form-input"
                 value={formData.institution}
                 onChange={(e) => setFormData(prev => ({ ...prev, institution: e.target.value }))}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
                 placeholder="Ex: CESPE, FCC, VUNESP..."
               />
             </div>
@@ -467,7 +459,7 @@ export const SyllabusModal = ({
           </button>
         </h2>
 
-        <div className="p-4 custom-scrollbar" style={{ maxHeight: 'calc(90vh - 100px)', overflowY: 'auto' }}>
+        <div className="p-6 custom-scrollbar" style={{ maxHeight: 'calc(90vh - 120px)', overflowY: 'auto' }}>
           {/* Adicionar item individual */}
           <div className="form-group">
             <label className="form-label">Novo Item do Edital (Individual)</label>
@@ -477,8 +469,6 @@ export const SyllabusModal = ({
                 className="form-input"
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
                 placeholder="Nome do tópico/artigo"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {

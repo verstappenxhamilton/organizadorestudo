@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClipboardPaste, Eye, Trash2, Edit3, ChevronUp, ChevronDown, PlusCircle } from 'lucide-react';
+import { ClipboardPaste, Eye, Trash2, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 
 export const SyllabusProcessor = ({ 
   onAddMultipleItems, 
@@ -15,8 +15,6 @@ export const SyllabusProcessor = ({
   const [isPasteAreaVisible, setIsPasteAreaVisible] = useState(false);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editingItemNameValue, setEditingItemNameValue] = useState('');
-  const [isAddingManualItem, setIsAddingManualItem] = useState(false);
-  const [manualItemName, setManualItemName] = useState('');
 
   const handleProcessPastedSyllabus = () => {
     if (!pastedSyllabusText.trim()) {
@@ -94,17 +92,6 @@ export const SyllabusProcessor = ({
     }
   };
 
-  const handleAddManualItem = () => {
-    if (manualItemName.trim()) {
-      onAddMultipleItems([manualItemName.trim()]);
-      setManualItemName('');
-      setIsAddingManualItem(false);
-      showToast("Item adicionado com sucesso!", "success");
-    } else {
-      showToast("O nome do item não pode ser vazio.", "error");
-    }
-  };
-
   const SyllabusItemDisplay = ({ item, onEditItemName, onDeleteItem, onMoveItemUp, onMoveItemDown, isFirst, isLast }) => {
     const isSubItem = item.name && typeof item.name === 'string' && (
       item.name.startsWith(" - ") || 
@@ -155,8 +142,6 @@ export const SyllabusProcessor = ({
             <textarea
               value={pastedSyllabusText}
               onChange={(e) => setPastedSyllabusText(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onFocus={(e) => e.stopPropagation()}
               placeholder="Cole o conteúdo do edital aqui. O sistema tentará identificar tópicos e subtópicos automaticamente."
               className="w-full h-32 p-3 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-sky-500 focus:border-sky-500"
             />
@@ -206,57 +191,10 @@ export const SyllabusProcessor = ({
 
       {syllabusItems && syllabusItems.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Itens do Edital ({syllabusItems.length})
-            </h4>
-            <button
-              onClick={() => setIsAddingManualItem(!isAddingManualItem)}
-              className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
-            >
-              <PlusCircle size={12} className="inline mr-1" />
-              Adicionar Item
-            </button>
-          </div>
-          
-          {isAddingManualItem && (
-            <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded-lg border border-green-200 dark:border-green-600">
-              <input
-                type="text"
-                value={manualItemName}
-                onChange={(e) => setManualItemName(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
-                placeholder="Digite o nome do novo item do edital..."
-                className="w-full p-2 text-sm border border-green-300 dark:border-green-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 mb-2"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddManualItem();
-                  }
-                }}
-                autoFocus
-              />
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={handleAddManualItem}
-                  className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                >
-                  Adicionar
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAddingManualItem(false);
-                    setManualItemName('');
-                  }}
-                  className="px-3 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="max-h-80 overflow-y-auto custom-scrollbar">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Itens do Edital ({syllabusItems.length})
+          </h4>
+          <div className="max-h-96 overflow-y-auto custom-scrollbar">
             {syllabusItems.map((item, index) => (
               <div key={item.id}>
                 {editingItemId === item.id ? (

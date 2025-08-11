@@ -202,9 +202,7 @@ export const SubjectsOverview = ({
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '6px',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%'
+                      alignItems: 'center'
                     }}>
                       <span style={{
                         background: '#f1f5f9',
@@ -238,18 +236,17 @@ export const SubjectsOverview = ({
                     <div className="subject-controls" style={{
                       display: 'flex',
                       alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: '4px',
+                      justifyContent: 'space-between',
                       marginBottom: '6px'
                     }}>
-                      <div className="filter-tabs" style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
+                      <div className="filter-tabs" style={{ display: 'flex', gap: '3px' }}>
                         <button
                           className={`filter-tab ${(!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'active' : ''}`}
                           onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'todos' }))}
                           style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
+                            fontSize: '0.65rem',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
                             border: 'none',
                             background: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? '#3b82f6' : '#e2e8f0',
                             color: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'white' : '#64748b',
@@ -263,9 +260,9 @@ export const SubjectsOverview = ({
                           className={`filter-tab ${activeFilters[subject.id] === 'nao-estudados' ? 'active' : ''}`}
                           onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'nao-estudados' }))}
                           style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
+                            fontSize: '0.65rem',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
                             border: 'none',
                             background: activeFilters[subject.id] === 'nao-estudados' ? '#3b82f6' : '#e2e8f0',
                             color: activeFilters[subject.id] === 'nao-estudados' ? 'white' : '#64748b',
@@ -279,9 +276,9 @@ export const SubjectsOverview = ({
                           className={`filter-tab ${activeFilters[subject.id] === 'com-revisao' ? 'active' : ''}`}
                           onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'com-revisao' }))}
                           style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
+                            fontSize: '0.65rem',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
                             border: 'none',
                             background: activeFilters[subject.id] === 'com-revisao' ? '#3b82f6' : '#e2e8f0',
                             color: activeFilters[subject.id] === 'com-revisao' ? 'white' : '#64748b',
@@ -295,9 +292,9 @@ export const SubjectsOverview = ({
                           className={`filter-tab ${activeFilters[subject.id] === 'estudados-sem-revisao' ? 'active' : ''}`}
                           onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'estudados-sem-revisao' }))}
                           style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
+                            fontSize: '0.65rem',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
                             border: 'none',
                             background: activeFilters[subject.id] === 'estudados-sem-revisao' ? '#3b82f6' : '#e2e8f0',
                             color: activeFilters[subject.id] === 'estudados-sem-revisao' ? 'white' : '#64748b',
@@ -338,7 +335,7 @@ export const SubjectsOverview = ({
                           }}
                         >
                           <div className="item-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span
                                 className="item-name"
                                 style={{
@@ -349,87 +346,70 @@ export const SubjectsOverview = ({
                               >
                                 {item.name}
                               </span>
-                            </div>
 
-                            {/* Fixed indicators on the right */}
-                            <div className="item-indicators" style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '8px',
-                              position: 'relative',
-                              flexShrink: 0 
-                            }}>
-                              {(() => {
-                                // Priorizar percentual de acerto das sessões, depois o manual
-                                const sessionAccuracy = getItemAccuracyFromSessions(item.id);
-                                const displayAccuracy = sessionAccuracy !== null ? sessionAccuracy : item.accuracy;
+                            <div className="item-stats" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {(() => {
+                              // Priorizar percentual de acerto das sessões, depois o manual
+                              const sessionAccuracy = getItemAccuracyFromSessions(item.id);
+                              const displayAccuracy = sessionAccuracy !== null ? sessionAccuracy : item.accuracy;
 
-                                return displayAccuracy !== undefined && (
-                                  <div
-                                    className="accuracy-badge"
-                                    style={{
-                                      backgroundColor: getAccuracyColor(displayAccuracy),
-                                      color: 'white',
-                                      padding: '3px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 'bold',
-                                      minWidth: '35px',
-                                      textAlign: 'center'
-                                    }}
-                                    title={sessionAccuracy !== null ? 'Baseado nas sessões de estudo' : 'Definido manualmente'}
-                                  >
-                                    {displayAccuracy}%
-                                  </div>
-                                );
-                              })()}
+                              return displayAccuracy !== undefined && (
+                                <div
+                                  className="accuracy-triangle"
+                                  style={{
+                                    backgroundColor: getAccuracyColor(displayAccuracy),
+                                    color: 'white',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 'bold',
+                                    marginRight: '8px'
+                                  }}
+                                  title={sessionAccuracy !== null ? 'Baseado nas sessões de estudo' : 'Definido manualmente'}
+                                >
+                                  {displayAccuracy}%
+                                </div>
+                              );
+                            })()}
 
                               {item.weight !== undefined && (
                                 <div
-                                  className="weight-badge"
                                   style={{
-                                    backgroundColor: getWeightColor(item.weight),
-                                    color: '#333',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
                                     fontSize: '0.7rem',
-                                    fontWeight: 'bold',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                    minWidth: '35px',
-                                    textAlign: 'center'
+                                    color: '#94a3b8'
                                   }}
-                                  title="Peso da questão"
                                 >
-                                  {item.weight}%
+                                  Peso: {item.weight}%
                                 </div>
                               )}
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <button
-                                  className="details-btn"
-                                  onClick={() => {
-                                    setSelectedSyllabusItem(item);
-                                    setIsItemDetailsModalOpen(true);
-                                  }}
-                                  title="Histórico de Item"
-                                >
-                                  <Eye size={12} />
-                                </button>
-
-                                <button
-                                  className="details-btn"
-                                  onClick={() => {
-                                    setEditingItem(item.id);
-                                    setTempAccuracy(item.accuracy?.toString() || '');
-                                    setTempWeight(item.weight?.toString() || '');
-                                  }}
-                                  title="Editar % Acerto e Peso"
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                              </div>
                             </div>
                           </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button
+                              className="details-btn"
+                              onClick={() => {
+                                setSelectedSyllabusItem(item);
+                                setIsItemDetailsModalOpen(true);
+                              }}
+                              title="Histórico de Item"
+                            >
+                              <Eye size={12} />
+                            </button>
+
+                            <button
+                              className="details-btn"
+                              onClick={() => {
+                                setEditingItem(item.id);
+                                setTempAccuracy(item.accuracy?.toString() || '');
+                                setTempWeight(item.weight?.toString() || '');
+                              }}
+                              title="Editar % Acerto e Peso"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          </div>
+                        </div>
 
                         {editingItem === item.id && (
                           <div className="edit-controls" style={{

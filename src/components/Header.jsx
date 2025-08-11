@@ -163,19 +163,6 @@ export const AppHeader = ({
               style={{ display: 'none' }}
             />
           </label>
-
-          <button
-            onClick={() => window.location.href = '/admin'}
-            className="action-btn admin"
-            title="Administração de Editais"
-            style={{
-              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-              border: '1px solid rgba(168, 85, 247, 0.3)'
-            }}
-          >
-            <Edit size={16} />
-            <span>Admin</span>
-          </button>
         </div>
       </div>
 

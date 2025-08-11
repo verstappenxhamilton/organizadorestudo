@@ -1,8 +1,10 @@
 import React from 'react';
 import {
+  BookOpen,
   PlusCircle,
   PlayCircle,
   ListChecks,
+  Edit3,
   Trash2,
   CheckCircle,
   Edit,
@@ -29,6 +31,7 @@ export const SubjectsManagement = ({
     <div className="card">
       <div className="subject-overview-header">
         <h2>
+          <BookOpen size={20} />
           Matérias (Gerenciamento)
         </h2>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
