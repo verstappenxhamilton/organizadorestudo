@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Eye, Edit2 } from 'lucide-react';
+import {
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Edit2,
+  Eye,
+  Target
+} from 'lucide-react';
 
 export const SubjectsOverview = ({
   subjects,
@@ -17,16 +26,27 @@ export const SubjectsOverview = ({
   const [tempAccuracy, setTempAccuracy] = useState('');
   const [tempWeight, setTempWeight] = useState('');
 
-  const getAccuracyColor = (accuracy) => {
-    if (accuracy >= 80) return '#10b981'; // Verde
-    if (accuracy >= 60) return '#f59e0b'; // Amarelo
-    if (accuracy >= 40) return '#f97316'; // Laranja
-    return '#ef4444'; // Vermelho
+  const filterOptions = [
+    { value: 'todos', label: 'Todos' },
+    { value: 'nao-estudados', label: 'Não estudados' },
+    { value: 'com-revisao', label: 'Com revisão' },
+    { value: 'estudados-sem-revisao', label: 'Estudados (sem revisão)' }
+  ];
+
+  const getAccuracyClasses = (accuracy) => {
+    if (accuracy >= 80) return 'bg-emerald-500/20 text-emerald-200 ring-1 ring-inset ring-emerald-500/40';
+    if (accuracy >= 60) return 'bg-amber-500/20 text-amber-200 ring-1 ring-inset ring-amber-400/40';
+    if (accuracy >= 40) return 'bg-orange-500/20 text-orange-200 ring-1 ring-inset ring-orange-400/40';
+    return 'bg-rose-500/20 text-rose-200 ring-1 ring-inset ring-rose-400/40';
   };
 
-  const getWeightColor = (weight) => {
+  const getWeightTint = (weight) => {
+    if (weight === undefined || weight === null) return undefined;
+
     const intensity = Math.min(weight / 100, 1);
-    return `rgba(239, 68, 68, ${0.2 + intensity * 0.6})`; // Vermelho com intensidade baseada no peso
+    const base = 0.06 + intensity * 0.14;
+
+    return `rgba(248, 113, 113, ${base.toFixed(3)})`;
   };
 
   const calculateNextReviewDate = (accuracy) => {
@@ -34,22 +54,21 @@ export const SubjectsOverview = ({
     let daysToAdd = 1;
 
     if (accuracy >= 90) {
-      daysToAdd = 7; // 1 semana
+      daysToAdd = 7;
     } else if (accuracy >= 80) {
-      daysToAdd = 5; // 5 dias
+      daysToAdd = 5;
     } else if (accuracy >= 70) {
-      daysToAdd = 3; // 3 dias
+      daysToAdd = 3;
     } else if (accuracy >= 60) {
-      daysToAdd = 2; // 2 dias
+      daysToAdd = 2;
     } else {
-      daysToAdd = 1; // 1 dia
+      daysToAdd = 1;
     }
 
     today.setDate(today.getDate() + daysToAdd);
     return today.toISOString().split('T')[0];
   };
 
-  // Calcular percentual de acerto baseado nas sessões
   const getItemAccuracyFromSessions = (itemId) => {
     if (!studySessions) return null;
 
@@ -61,7 +80,6 @@ export const SubjectsOverview = ({
 
     if (itemSessions.length === 0) return null;
 
-    // Usar a média dos percentuais de acerto das sessões
     const totalAccuracy = itemSessions.reduce((sum, session) => sum + session.accuracy, 0);
     return Math.round(totalAccuracy / itemSessions.length);
   };
@@ -76,15 +94,14 @@ export const SubjectsOverview = ({
         item.id === itemId
           ? {
               ...item,
-              accuracy: accuracy,
+              accuracy,
               lastAccuracyUpdate: new Date().toISOString(),
-              nextReviewDate: nextReviewDate,
+              nextReviewDate,
               isStudied: true
             }
           : item
       );
       setSyllabusItems(updatedItems);
-      // Salvar no localStorage
       localStorage.setItem('syllabusItems', JSON.stringify(updatedItems));
     }
 
@@ -101,12 +118,11 @@ export const SubjectsOverview = ({
         item.id === itemId
           ? {
               ...item,
-              weight: weight
+              weight
             }
           : item
       );
       setSyllabusItems(updatedItems);
-      // Salvar no localStorage
       localStorage.setItem('syllabusItems', JSON.stringify(updatedItems));
     }
 
@@ -130,38 +146,36 @@ export const SubjectsOverview = ({
     }
   };
 
-  // Função para detectar se um item é uma submatéria
   const isSubItem = (itemName) => {
     if (!itemName || typeof itemName !== 'string') return false;
-    // Detectar itens que começam com " - " ou números seguidos de ponto (ex: "1.1", "2.3")
+
     return itemName.startsWith(' - ') ||
-           itemName.startsWith('- ') ||
-           /^\d+\.\d+/.test(itemName.trim());
+      itemName.startsWith('- ') ||
+      /^\d+\.\d+/.test(itemName.trim());
   };
 
-  // Função para detectar nível de hierarquia baseado na numeração
   const getHierarchyLevel = (itemName) => {
     if (!itemName || typeof itemName !== 'string') return 0;
 
     const trimmed = itemName.trim();
 
-    // Detectar itens que começam com " - " ou "- "
     if (trimmed.startsWith('- ') || itemName.startsWith(' - ')) {
       return 1;
     }
 
-    // Detectar numeração (ex: "1.", "1.1", "1.1.1")
     const numberMatch = trimmed.match(/^(\d+\.)+/);
     if (numberMatch) {
       const dots = (numberMatch[0].match(/\./g) || []).length;
-      return dots > 1 ? dots - 1 : 0; // 1. = nível 0, 1.1 = nível 1, 1.1.1 = nível 2
+      return dots > 1 ? dots - 1 : 0;
     }
 
     return 0;
   };
 
+  const indentationClasses = ['pl-0', 'pl-4', 'pl-8', 'pl-12'];
+
   return (
-    <div className="subjects-overview-new">
+    <div className="space-y-6">
       {subjects.map(subject => {
         const subjectSyllabusItems = syllabusItems.filter(item => item.subjectId === subject.id);
         const filteredItems = filterItems(subjectSyllabusItems, subject.id);
@@ -174,319 +188,268 @@ export const SubjectsOverview = ({
           ? studiedItems.reduce((sum, item) => sum + (item.accuracy || 0), 0) / studiedItems.length
           : 0;
         const isExpanded = expandedSubjects[subject.id];
+        const formattedStudyTime = Number.isFinite(totalStudyTime)
+          ? totalStudyTime.toFixed(1)
+          : '0.0';
 
         return (
-          <div key={subject.id} className="subject-overview-new">
-            <div className="subject-header-new">
-              <div className="subject-info">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <h3 className="subject-name" style={{ margin: 0 }}>{subject.name}</h3>
-                  <button
-                    className="expand-btn"
-                    onClick={() => {
-                      const newExpanded = { ...expandedSubjects };
-                      newExpanded[subject.id] = !newExpanded[subject.id];
-                      setExpandedSubjects(newExpanded);
-                    }}
-                  >
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+          <div
+            key={subject.id}
+            className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-[0_20px_45px_rgba(15,23,42,0.35)] transition-colors duration-200 hover:border-sky-400/40"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                const newExpanded = { ...expandedSubjects };
+                newExpanded[subject.id] = !newExpanded[subject.id];
+                setExpandedSubjects(newExpanded);
+              }}
+              className="flex w-full items-start justify-between gap-6 px-6 py-6 text-left hover:bg-white/5"
+            >
+              <div className="flex-1 space-y-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-lg font-semibold tracking-tight text-white sm:text-xl">
+                    {subject.name}
+                  </span>
+                  {subject.category && (
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-200">
+                      {subject.category}
+                    </span>
+                  )}
                 </div>
 
-                {isExpanded && (
-                  <>
-                    <div className="subject-stats-compact" style={{
-                      marginBottom: '6px',
-                      fontSize: '0.7rem',
-                      color: '#64748b',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '6px',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        {studiedItems.length} de {subjectSyllabusItems.length} itens ({studiedPercentage.toFixed(0)}%)
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        Média: {averageAccuracy.toFixed(0)}%
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        {totalStudyTime.toFixed(1)}h estudadas
-                      </span>
-                    </div>
+                <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                    <span>{studiedItems.length} de {subjectSyllabusItems.length || 0} itens mapeados</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-sky-300" />
+                    <span>Média de acerto {averageAccuracy.toFixed(0)}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-300" />
+                    <span>{formattedStudyTime}h estudadas</span>
+                  </div>
+                </div>
 
-                    <div className="subject-controls" style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '6px'
-                    }}>
-                      <div className="filter-tabs" style={{ display: 'flex', gap: '3px' }}>
-                        <button
-                          className={`filter-tab ${(!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'todos' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? '#3b82f6' : '#e2e8f0',
-                            color: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Todos
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'nao-estudados' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'nao-estudados' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'nao-estudados' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'nao-estudados' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Não Estudados
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'com-revisao' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'com-revisao' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'com-revisao' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'com-revisao' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Com Revisão
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'estudados-sem-revisao' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'estudados-sem-revisao' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'estudados-sem-revisao' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'estudados-sem-revisao' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Estudados ({studiedPercentage.toFixed(0)}% Rev.)
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
+                    <span>Progresso do edital</span>
+                    <span>{Math.round(studiedPercentage)}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-800/80">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-indigo-500"
+                      style={{ width: `${Math.max(Math.round(studiedPercentage), 4)}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+
+              <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200">
+                {isExpanded ? 'Recolher' : 'Detalhar'}
+                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </span>
+            </button>
 
             {isExpanded && (
-              <div className="subject-content-new">
+              <div className="border-t border-white/5 bg-slate-950/50 px-6 py-6">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-5">
+                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-400">
+                    <BookOpen size={14} />
+                    <span>Itens do edital</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {filterOptions.map(option => {
+                      const isActive = (activeFilters[subject.id] || 'todos') === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: option.value }))}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                            isActive
+                              ? 'border-sky-400/60 bg-sky-500/15 text-sky-200 focus-visible:ring-sky-400'
+                              : 'border-white/10 bg-white/5 text-slate-300 hover:border-sky-400/40 hover:text-sky-100 focus-visible:ring-white/40'
+                          }`}
+                          aria-pressed={isActive}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {filteredItems.length === 0 ? (
-                  <div className="no-items">
-                    Nenhum item corresponde ao filtro selecionado.
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                    <p className="text-sm font-medium text-slate-300">Nenhum item corresponde ao filtro selecionado.</p>
+                    <p className="text-xs text-slate-500">Ajuste os filtros ou cadastre novos tópicos para esta matéria.</p>
                   </div>
                 ) : (
-                  <div className="syllabus-items-list">
+                  <div className="mt-5 space-y-3">
                     {filteredItems.map(item => {
                       const hierarchyLevel = getHierarchyLevel(item.name);
+                      const indentationClass = indentationClasses[Math.min(hierarchyLevel, indentationClasses.length - 1)];
                       const isSubItemFlag = isSubItem(item.name);
+                      const sessionAccuracy = getItemAccuracyFromSessions(item.id);
+                      const displayAccuracy = sessionAccuracy !== null ? sessionAccuracy : item.accuracy;
+                      const itemWeightTint = getWeightTint(item.weight);
 
                       return (
                         <div
                           key={item.id}
-                          className="syllabus-item-row"
+                          className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition-all duration-200 hover:border-sky-400/50 hover:bg-white/[0.06] ${
+                            isSubItemFlag ? 'pr-4' : ''
+                          }`}
                           style={{
-                            backgroundColor: item.weight ? getWeightColor(item.weight) : undefined,
-                            marginLeft: `${hierarchyLevel * 20}px`, // Recuo de 20px por nível
-                            borderLeft: isSubItemFlag ? '3px solid rgba(59, 130, 246, 0.3)' : 'none',
-                            paddingLeft: isSubItemFlag ? '12px' : '8px'
+                            marginLeft: hierarchyLevel ? `${hierarchyLevel * 12}px` : undefined,
+                            borderLeft: isSubItemFlag ? '2px solid rgba(56, 189, 248, 0.35)' : undefined,
+                            backgroundColor: itemWeightTint || undefined
                           }}
                         >
-                          <div className="item-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span
-                                className="item-name"
-                                style={{
-                                  fontSize: isSubItemFlag ? '0.85rem' : '0.9rem',
-                                  fontWeight: isSubItemFlag ? '400' : '500',
-                                  color: isSubItemFlag ? '#94a3b8' : '#e2e8f0'
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className={`flex flex-col gap-2 text-sm text-slate-200 ${indentationClass}`}>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium leading-tight text-white">
+                                  {item.name}
+                                </span>
+                                {item.isStudied && (
+                                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-200">
+                                    Estudado
+                                  </span>
+                                )}
+                                {item.nextReviewDate && (
+                                  <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-200">
+                                    Próxima revisão {new Date(item.nextReviewDate).toLocaleDateString('pt-BR')}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                                {displayAccuracy !== undefined && (
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold ${getAccuracyClasses(displayAccuracy)}`}
+                                    title={sessionAccuracy !== null ? 'Baseado nas sessões de estudo' : 'Definido manualmente'}
+                                  >
+                                    <Target className="h-3.5 w-3.5" />
+                                    {displayAccuracy}% acerto
+                                  </span>
+                                )}
+                                {item.weight !== undefined && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2.5 py-1 font-semibold text-rose-200">
+                                    Peso {item.weight}%
+                                  </span>
+                                )}
+                                {item.lastAccuracyUpdate && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[0.65rem] text-slate-300">
+                                    Atualizado em {new Date(item.lastAccuracyUpdate).toLocaleDateString('pt-BR')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedSyllabusItem(item);
+                                  setIsItemDetailsModalOpen(true);
                                 }}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:border-sky-400/60 hover:text-sky-100"
+                                title="Histórico do item"
                               >
-                                {item.name}
-                              </span>
+                                <Eye size={16} />
+                                <span className="sr-only">Abrir histórico do item</span>
+                              </button>
 
-                            <div className="item-stats" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {(() => {
-                              // Priorizar percentual de acerto das sessões, depois o manual
-                              const sessionAccuracy = getItemAccuracyFromSessions(item.id);
-                              const displayAccuracy = sessionAccuracy !== null ? sessionAccuracy : item.accuracy;
-
-                              return displayAccuracy !== undefined && (
-                                <div
-                                  className="accuracy-triangle"
-                                  style={{
-                                    backgroundColor: getAccuracyColor(displayAccuracy),
-                                    color: 'white',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 'bold',
-                                    marginRight: '8px'
-                                  }}
-                                  title={sessionAccuracy !== null ? 'Baseado nas sessões de estudo' : 'Definido manualmente'}
-                                >
-                                  {displayAccuracy}%
-                                </div>
-                              );
-                            })()}
-
-                              {item.weight !== undefined && (
-                                <div
-                                  style={{
-                                    fontSize: '0.7rem',
-                                    color: '#94a3b8'
-                                  }}
-                                >
-                                  Peso: {item.weight}%
-                                </div>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingItem(item.id);
+                                  setTempAccuracy(item.accuracy?.toString() || '');
+                                  setTempWeight(item.weight?.toString() || '');
+                                }}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:border-sky-400/60 hover:text-sky-100"
+                                title="Editar acerto e peso"
+                              >
+                                <Edit2 size={16} />
+                                <span className="sr-only">Editar acerto e peso</span>
+                              </button>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <button
-                              className="details-btn"
-                              onClick={() => {
-                                setSelectedSyllabusItem(item);
-                                setIsItemDetailsModalOpen(true);
-                              }}
-                              title="Histórico de Item"
-                            >
-                              <Eye size={12} />
-                            </button>
+                          {editingItem === item.id && (
+                            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/80 p-4 text-sm text-slate-200">
+                              <div className="grid gap-4 sm:grid-cols-3">
+                                <label className="flex flex-col gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                                  % de acerto
+                                  <input
+                                    type="number"
+                                    value={tempAccuracy}
+                                    onChange={(e) => setTempAccuracy(e.target.value)}
+                                    min="0"
+                                    max="100"
+                                    placeholder="0-100"
+                                    className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                                  />
+                                </label>
 
-                            <button
-                              className="details-btn"
-                              onClick={() => {
-                                setEditingItem(item.id);
-                                setTempAccuracy(item.accuracy?.toString() || '');
-                                setTempWeight(item.weight?.toString() || '');
-                              }}
-                              title="Editar % Acerto e Peso"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                          </div>
+                                <label className="flex flex-col gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+                                  % de peso
+                                  <input
+                                    type="number"
+                                    value={tempWeight}
+                                    onChange={(e) => setTempWeight(e.target.value)}
+                                    min="0"
+                                    max="100"
+                                    placeholder="0-100"
+                                    className="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                                  />
+                                </label>
+
+                                <div className="flex flex-col justify-center gap-2 rounded-lg border border-dashed border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
+                                  <span className="font-medium text-slate-300">Sugestão:</span>
+                                  <p>Defina o acerto para atualizar a próxima revisão automaticamente.</p>
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveAccuracy(item.id)}
+                                  className="inline-flex items-center gap-2 rounded-full bg-sky-500/90 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                  disabled={!tempAccuracy}
+                                >
+                                  Salvar % de acerto
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveWeight(item.id)}
+                                  className="inline-flex items-center gap-2 rounded-full bg-emerald-500/90 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                  disabled={!tempWeight}
+                                >
+                                  Salvar peso
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingItem(null);
+                                    setTempAccuracy('');
+                                    setTempWeight('');
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-slate-300/40 hover:text-white"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-
-                        {editingItem === item.id && (
-                          <div className="edit-controls" style={{
-                            marginTop: '8px',
-                            padding: '8px',
-                            background: 'rgba(15, 23, 42, 0.8)',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems: 'center',
-                            flexWrap: 'wrap'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <label style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>% Acerto:</label>
-                              <input
-                                type="number"
-                                value={tempAccuracy}
-                                onChange={(e) => setTempAccuracy(e.target.value)}
-                                className="accuracy-input"
-                                style={{ width: '60px' }}
-                                min="0"
-                                max="100"
-                                placeholder="0-100"
-                              />
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <label style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>% Peso:</label>
-                              <input
-                                type="number"
-                                value={tempWeight}
-                                onChange={(e) => setTempWeight(e.target.value)}
-                                className="accuracy-input"
-                                style={{ width: '60px' }}
-                                min="0"
-                                max="100"
-                                placeholder="0-100"
-                              />
-                            </div>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => handleSaveAccuracy(item.id)}
-                              style={{ fontSize: '0.7rem', padding: '4px 8px' }}
-                              disabled={!tempAccuracy}
-                            >
-                              Salvar %
-                            </button>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => handleSaveWeight(item.id)}
-                              style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#059669' }}
-                              disabled={!tempWeight}
-                            >
-                              Salvar Peso
-                            </button>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => {
-                                setEditingItem(null);
-                                setTempAccuracy('');
-                                setTempWeight('');
-                              }}
-                              style={{
-                                fontSize: '0.7rem',
-                                padding: '4px 8px',
-                                background: '#6b7280'
-                              }}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
+                      );
                     })}
                   </div>
                 )}
