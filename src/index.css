@@ -69,6 +69,92 @@
 
 /* Component styles */
 @layer components {
+  .app-shell {
+    position: relative;
+    min-height: 100vh;
+    background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 55%), #020617;
+    color: #e2e8f0;
+    overflow-x: hidden;
+  }
+
+  .app-shell__gradient,
+  .app-shell__grid,
+  .app-shell__blur {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .app-shell__gradient {
+    background: radial-gradient(circle at top, rgba(37, 99, 235, 0.18), transparent 60%),
+      radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.08), transparent 60%);
+    opacity: 0.95;
+  }
+
+  .app-shell__grid {
+    background-image:
+      linear-gradient(0deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mix-blend-mode: lighten;
+    opacity: 0.45;
+  }
+
+  .app-shell__blur {
+    border-radius: 9999px;
+    filter: blur(120px);
+    opacity: 0.7;
+  }
+
+  .app-shell__blur--1 {
+    top: -160px;
+    left: -120px;
+    width: 380px;
+    height: 380px;
+    background: rgba(91, 33, 182, 0.32);
+  }
+
+  .app-shell__blur--2 {
+    bottom: -140px;
+    right: -100px;
+    width: 320px;
+    height: 320px;
+    background: rgba(56, 189, 248, 0.28);
+  }
+
+  .app-shell__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .loading-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .loading-message {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  .loading-subtext {
+    font-size: 0.85rem;
+    color: rgba(148, 163, 184, 0.85);
+  }
+
   /* Button base styles - Modern Design */
   .btn {
     display: inline-flex;
@@ -140,28 +226,22 @@
   
   /* Card styles - Modern Design */
   .card {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
-    border-radius: 16px;
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.3),
-      0 10px 10px -5px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    padding: 16px;
-    margin-bottom: 16px;
     position: relative;
+    background: linear-gradient(155deg, rgba(15, 23, 42, 0.86) 0%, rgba(2, 6, 23, 0.92) 100%);
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    box-shadow: 0 32px 55px -35px rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(18px);
+    padding: 24px;
     overflow: hidden;
   }
 
   .card::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), transparent 65%);
+    opacity: 0.6;
     pointer-events: none;
   }
   
@@ -281,24 +361,55 @@
 }
 
 .stat-card {
-  background: rgba(30, 41, 59, 0.9);
-  border-radius: 6px;
-  padding: 12px;
-  border: 1px solid rgba(71, 85, 105, 0.3);
-  text-align: center;
-  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  background: radial-gradient(circle at top, rgba(148, 163, 184, 0.1), rgba(15, 23, 42, 0.35));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  padding: 18px;
+  text-align: left;
+  backdrop-filter: blur(16px);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 26px 45px -30px rgba(56, 189, 248, 0.55);
+}
+
+.modern-stat {
+  min-height: 150px;
 }
 
 .stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #3b82f6;
-  margin-bottom: 4px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f8fafc;
 }
 
 .stat-label {
-  color: #94a3b8;
-  font-size: 0.8rem;
+  color: rgba(148, 163, 184, 0.85);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.subject-card {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 28px 50px -35px rgba(15, 23, 42, 0.7);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.subject-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 30px 55px -32px rgba(59, 130, 246, 0.45);
 }
 
 /* Subjects overview */
@@ -654,12 +765,6 @@
   border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
-.card {
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
 .subject-overview-header {
   margin-bottom: 24px;
 }
@@ -845,6 +950,7 @@
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
 }
 
+
 .loading-container {
   display: flex;
   justify-content: center;
@@ -855,12 +961,13 @@
 }
 
 .loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid #3b82f6;
+  width: 56px;
+  height: 56px;
+  border: 4px solid rgba(148, 163, 184, 0.25);
+  border-top-color: rgba(56, 189, 248, 0.85);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
 }
 
 @keyframes spin {
@@ -1938,53 +2045,63 @@
 
 /* Ciclo de Estudos Visual */
 .study-cycle-indicator {
-  margin-top: 20px;
-  padding: 15px;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  margin-top: 16px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.06));
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  backdrop-filter: blur(12px);
 }
 
 .study-cycle-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 16px;
   font-weight: 600;
-  color: #3B82F6;
+  color: #e2e8f0;
 }
 
 .study-cycle-icon {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .study-cycle-title {
-  font-size: 14px;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.85);
 }
 
 .study-cycle-subjects {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
 }
 
 .study-cycle-item {
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
-  border-radius: 6px;
-  min-width: 120px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.12);
+  min-height: 72px;
 }
 
 .cycle-subject-name {
   font-weight: 600;
-  margin-bottom: 2px;
+  font-size: 0.9rem;
+  color: #f8fafc;
 }
 
 .cycle-subject-weight {
-  color: #6B7280;
-  font-size: 11px;
+  color: rgba(148, 163, 184, 0.75);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Modal de Sessão - Correção de scroll */
