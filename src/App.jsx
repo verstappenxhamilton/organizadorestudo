@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, BarChart3, Eye } from 'lucide-react';
+import {
+  PlusCircle,
+  Eye,
+  Clock,
+  Activity,
+  Target,
+  Percent,
+  Upload,
+  CalendarClock,
+  AlertTriangle,
+  CalendarDays,
+  ChevronRight
+} from 'lucide-react';
 
 // Importar componentes
 import { ProfileModal, SubjectModal, ItemDetailsModal, SyllabusModal, ProgressReportModal, SessionHistoryModal } from './components/Modals';
 import { SessionModal } from './components/SessionModal';
 import { SubjectsOverview } from './components/SubjectsOverview';
 import { SubjectsManagement } from './components/SubjectsManagement';
-import { AppHeader, ProfileSection } from './components/Header';
+import { AppHeader } from './components/Header';
 import { Calendar } from './components/Calendar';
 import ContestComparison from './components/ContestComparison';
 import { fetchGlobalEditais } from './services/globalEditaisService';
 import GlobalConcursosCard from './components/dashboard/GlobalConcursosCard';
+import ProductHighlights from './components/dashboard/ProductHighlights';
+import ExperienceAssurances from './components/dashboard/ExperienceAssurances';
 import ImportConcursoModal from './components/import/ImportConcursoModal';
 
 // Importar serviços
@@ -30,7 +44,6 @@ function App() {
   const [selectedSyllabusItem, setSelectedSyllabusItem] = useState(null);
   const [isItemDetailsModalOpen, setIsItemDetailsModalOpen] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Carregando dados...');
-  const [currentView, setCurrentView] = useState('overview'); // 'overview', 'subjects', 'calendar', 'reports'
 
   const [studyProfiles, setStudyProfiles] = useState([]);
   const [activeProfileId, setActiveProfileId] = useState(null);
@@ -377,68 +390,16 @@ function App() {
 
   // Componente de Loading
   const LoadingSpinner = () => (
-    <div className="loading-container">
+    <div className="loading-state">
       <div className="loading-spinner" />
-      <p className="loading-message">{loadingMessage}</p>
-      <div className="loading-progress">
-        <div className="loading-bar"></div>
+      <div className="loading-copy">
+        <p className="loading-message">{loadingMessage}</p>
+        <p className="loading-subtext">Preparando seu ambiente de estudos personalizado...</p>
       </div>
     </div>
   );
 
   // Componente de Breadcrumb
-  const Breadcrumb = () => {
-    const activeProfile = studyProfiles.find(p => p.id === activeProfileId);
-    const viewNames = {
-      overview: 'Visão Geral',
-      subjects: 'Matérias',
-      calendar: 'Calendário',
-      reports: 'Relatórios'
-    };
-
-    return (
-      <div className="breadcrumb">
-        <span className="breadcrumb-item">
-          📚 {activeProfile?.name || 'Nenhum Concurso'}
-        </span>
-        <span className="breadcrumb-separator">›</span>
-        <span className="breadcrumb-item active">
-          {viewNames[currentView]}
-        </span>
-      </div>
-    );
-  };
-
-  // Componente de Estatísticas Rápidas
-  const QuickStats = () => {
-    const totalSubjects = activeSubjects.length;
-    const totalItems = activeSyllabusItems.length;
-    const studiedItems = activeSyllabusItems.filter(item => item.isStudied).length;
-    const studiedPercentage = totalItems > 0 ? ((studiedItems / totalItems) * 100).toFixed(0) : 0;
-    const totalHours = activeSessions.reduce((sum, session) => sum + session.duration, 0);
-
-    return (
-      <div className="quick-stats">
-        <div className="stat-item">
-          <span className="stat-value">{totalSubjects}</span>
-          <span className="stat-label">Matérias</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-value">{studiedPercentage}%</span>
-          <span className="stat-label">Progresso</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-value">{totalHours.toFixed(1)}h</span>
-          <span className="stat-label">Estudadas</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-value">{studiedItems}/{totalItems}</span>
-          <span className="stat-label">Itens</span>
-        </div>
-      </div>
-    );
-  };
-
   // Componente de Toast Melhorado
   const Toast = ({ message, type, isVisible }) => {
     if (!isVisible) return null;
@@ -622,203 +583,461 @@ function App() {
   const activeSubjects = subjects.filter(subject => subject.profileId === activeProfileId);
   const activeSessions = studySessions.filter(session => session.profileId === activeProfileId);
   const activeSimulados = simulados.filter(s => s.profileId === activeProfileId);
-  const activeSyllabusItems = syllabusItems.filter(item => 
+  const activeSyllabusItems = syllabusItems.filter(item =>
     activeSubjects.some(subject => subject.id === item.subjectId)
   );
+
+  const activeProfile = studyProfiles.find(profile => profile.id === activeProfileId);
+  const subjectLookup = new Map(activeSubjects.map(subject => [subject.id, subject]));
+  const todayISO = new Date().toISOString().split('T')[0];
+
+  const formatDateLabel = (dateString) => {
+    if (!dateString) return '-';
+    const parsed = new Date(dateString);
+    if (Number.isNaN(parsed.getTime())) return '-';
+    return parsed.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  };
+
+  const formatDuration = (minutes) => {
+    if (!minutes) return '0h';
+    const hours = minutes / 60;
+    if (hours >= 1) {
+      return `${hours.toFixed(1)}h`;
+    }
+    return `${Math.round(minutes)}min`;
+  };
+
+  const getSubjectLabel = (subjectId) => subjectLookup.get(subjectId)?.name || 'Sem matéria';
+
+  const totalHoursStudied = activeSessions.reduce((sum, session) => sum + (session.duration || 0), 0) / 60;
+  const totalItems = activeSyllabusItems.length;
+  const studiedItems = activeSyllabusItems.filter(item => item.isStudied).length;
+  const studiedPercentage = totalItems > 0 ? (studiedItems / totalItems) * 100 : 0;
+  const nextReviewLabel = getNextReviewDate();
+
+  const overviewStats = [
+    {
+      label: 'Horas estudadas',
+      value: `${totalHoursStudied.toFixed(1)}h`,
+      description: 'Tempo total dedicado ao concurso atual.',
+      icon: Clock
+    },
+    {
+      label: 'Sessões registradas',
+      value: activeSessions.length,
+      description: 'Sprints de estudo concluídos.',
+      icon: Activity
+    },
+    {
+      label: 'Simulados feitos',
+      value: activeSimulados.length,
+      description: 'Simulados cadastrados para este concurso.',
+      icon: Target
+    },
+    {
+      label: 'Progresso do edital',
+      value: `${Math.round(studiedPercentage)}%`,
+      description: `${studiedItems}/${totalItems || 0} itens concluídos.`,
+      icon: Percent
+    },
+    {
+      label: 'Próxima revisão',
+      value: nextReviewLabel,
+      description: 'Data sugerida conforme seu ciclo de revisões.',
+      icon: CalendarClock
+    }
+  ];
+
+  const urgentReviewItems = getUrgentReviews().slice(0, 5);
+  const upcomingSessions = [...activeSessions]
+    .filter(session => session.date && session.date >= todayISO)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 4);
+  const upcomingSimulados = [...activeSimulados]
+    .filter(simulado => simulado.data)
+    .sort((a, b) => new Date(a.data) - new Date(b.data))
+    .slice(0, 3);
 
   // Renderização condicional baseada no estado de carregamento
   if (isLoading) {
     return (
-      <div className="app-container">
-        <LoadingSpinner />
+      <div className="app-shell">
+        <div className="app-shell__gradient" />
+        <div className="app-shell__grid" />
+        <div className="app-shell__blur app-shell__blur--1" />
+        <div className="app-shell__blur app-shell__blur--2" />
+        <div className="app-shell__content flex items-center justify-center">
+          <div className="card w-full max-w-md p-10 text-center">
+            <LoadingSpinner />
+          </div>
+        </div>
       </div>
     );
   }
 
   // Interface principal
   return (
-    <div className="app-container mx-auto" style={{maxWidth:'1400px', padding:'0 1rem'}}>
-      {/* Header */}
-      <AppHeader
-        setIsProgressReportModalOpen={setIsProgressReportModalOpen}
-        handleExportData={handleExportData}
-        handleImportData={handleImportData}
-        studyProfiles={studyProfiles}
-        activeProfileId={activeProfileId}
-        setActiveProfileId={handleSetActiveProfile}
-        onOpenProfileModal={() => setIsProfileModalOpen(true)}
-      />
+    <>
+      <div className="app-shell">
+        <div className="app-shell__gradient" />
+        <div className="app-shell__grid" />
+        <div className="app-shell__blur app-shell__blur--1" />
+        <div className="app-shell__blur app-shell__blur--2" />
+        <div className="app-shell__content space-y-8">
+        <AppHeader
+          setIsProgressReportModalOpen={setIsProgressReportModalOpen}
+          handleExportData={handleExportData}
+          handleImportData={handleImportData}
+          studyProfiles={studyProfiles}
+          activeProfileId={activeProfileId}
+          setActiveProfileId={handleSetActiveProfile}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
+        />
 
-      {/* Breadcrumb e Estatísticas */}
-      {activeProfileId && (
-        <div className="navigation-section">
-          <Breadcrumb />
-          <QuickStats />
-        </div>
-      )}
-
-      {/* Conteúdo Principal */}
-      {!activeProfileId ? (
-        <div className="card">
-          <div className="welcome-section">
-            <h2>Bem-vindo ao Organizador de Estudos!</h2>
-            <p>Crie ou selecione um perfil de concurso para começar a organizar seus estudos.</p>
-            <button
-              className="btn btn-primary"
-              onClick={() => setIsProfileModalOpen(true)}
-            >
-              <PlusCircle size={20} />
-              Criar Primeiro Perfil
-            </button>
+        {!activeProfileId ? (
+          <div className="card space-y-4 p-10 text-center">
+            <h2 className="text-2xl font-semibold text-white">Comece seu planejamento</h2>
+            <p className="text-sm text-slate-300">
+              Crie um concurso para visualizar estatísticas, metas e revisões em um único painel.
+            </p>
+            <div className="flex justify-center">
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-5 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                onClick={() => setIsProfileModalOpen(true)}
+              >
+                <PlusCircle size={18} />
+                Criar primeiro concurso
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-6" style={{ maxWidth: '1150px', margin: '0 auto' }}>
-          {/* Estatísticas Rápidas */}
-          <div className="card">
-            <h2>
-              <BarChart3 size={20} />
-              Estatísticas Rápidas
-            </h2>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-value">{(activeSessions.reduce((total, session) => total + (session.duration || 0), 0) / 60).toFixed(1)}h</div>
-                <div className="stat-label">Total Estudado</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{activeSessions.length}</div>
-                <div className="stat-label">Sessões</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{activeSimulados.length}</div>
-                <div className="stat-label">Simulados</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">
-                  {activeSyllabusItems.length > 0
-                    ? (activeSyllabusItems.reduce((sum, item) => sum + (item.accuracy || 0), 0) / activeSyllabusItems.length).toFixed(0)
-                    : 0}%
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+            <section className="space-y-6">
+              <div className="card space-y-6 p-6 sm:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <span className="text-xs uppercase tracking-[0.35em] text-sky-100/70">Visão geral</span>
+                    <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+                      {activeProfile?.name || 'Seu concurso'}
+                    </h2>
+                    <p className="mt-3 text-sm text-slate-300">
+                      {activeProfile?.description
+                        ? activeProfile.description
+                        : 'Acompanhe horas estudadas, simulados e revisões em um único lugar.'}
+                    </p>
+                  </div>
+                  {activeProfile?.examDate && (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-right">
+                      <span className="text-xs uppercase tracking-wide text-slate-400">Data da prova</span>
+                      <p className="mt-2 text-lg font-semibold text-white">
+                        {new Date(activeProfile.examDate).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="stat-label">Média de Acerto Geral</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{getNextReviewDate()}</div>
-                <div className="stat-label">Próxima Revisão Urgente</div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button className="btn btn-primary" onClick={() => { setIsSimuladoModalOpen(true); }}>Registrar Simulado</button>
-              {globalEditais.length > 0 && activeSubjects.length > 0 && (
-                <button className="btn btn-secondary" onClick={() => setIsImportEditalOpen(true)}>Importar Itens de Edital</button>
-              )}
-            </div>
 
-            {/* Ciclo de Estudos Visual */}
-            {activeSubjects.length > 0 && (
-              <div className="study-cycle-indicator">
-                <div className="study-cycle-header">
-                  <span className="study-cycle-icon">🔄</span>
-                  <span className="study-cycle-title">Ciclo de Estudos Visual</span>
-                </div>
-                <div className="study-cycle-subjects">
-                  {activeSubjects.map(subject => (
-                    <div
-                      key={subject.id}
-                      className="study-cycle-item"
-                      style={{
-                        backgroundColor: subject.color + '20',
-                        borderLeft: `3px solid ${subject.color}`
-                      }}
-                    >
-                      <span className="cycle-subject-name">{subject.name}</span>
-                      <span className="cycle-subject-weight">Peso: {subject.weight || 1}</span>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                  {overviewStats.map(({ label, value, description, icon: Icon }) => (
+                    <div key={label} className="stat-card modern-stat">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+                          <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+                        </div>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-sky-200">
+                          <Icon size={18} />
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-slate-400">{description}</p>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
 
-          {activeSubjects.length === 0 ? (
-            <div className="card">
-              <div className="welcome-section">
-                <h2>Nenhuma matéria cadastrada</h2>
-                <p>Adicione sua primeira matéria para começar a organizar seus estudos.</p>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setIsSubjectModalOpen(true)}
-                >
-                  <PlusCircle size={20} />
-                  Adicionar Primeira Matéria
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Calendário de Estudos */}
-              <div className="card">
-                <Calendar
-                  studySessions={activeSessions}
-                  syllabusItems={activeSyllabusItems}
-                  onDateClick={(date) => {
-                    // Aqui pode abrir um modal com detalhes do dia
-                  }}
-                />
-              </div>
-
-              {/* Matérias (Gerenciamento) */}
-              <SubjectsManagement
-                subjects={activeSubjects}
-                studySessions={activeSessions}
-                setIsSubjectModalOpen={setIsSubjectModalOpen}
-                setCurrentSubjectForSession={setCurrentSubjectForSession}
-                setIsSessionModalOpen={setIsSessionModalOpen}
-                setCurrentSubjectForSyllabus={setCurrentSubjectForSyllabus}
-                setIsSyllabusModalOpen={setIsSyllabusModalOpen}
-                setEditingSubject={setEditingSubject}
-                setConfirmationDialog={setConfirmationDialog}
-                handleDeleteSubject={handleDeleteSubject}
-                getSubjectStudyTime={getSubjectStudyTime}
-                calculateSubjectProgress={calculateSubjectProgress}
-                setIsSessionHistoryModalOpen={setIsSessionHistoryModalOpen}
-                setSelectedSubjectForHistory={setSelectedSubjectForHistory}
-              />
-
-              {/* Visão Geral das Matérias e Edital */}
-              <div className="card">
-                <h2>
-                  <Eye size={20} />
-                  Visão Geral das Matérias e Edital
-                </h2>
-                <SubjectsOverview
-                  subjects={activeSubjects}
-                  syllabusItems={activeSyllabusItems}
-                  setSyllabusItems={setSyllabusItems}
-                  expandedSubjects={expandedSubjects}
-                  setExpandedSubjects={setExpandedSubjects}
-                  getSubjectStudyTime={getSubjectStudyTime}
-                  setSelectedSyllabusItem={setSelectedSyllabusItem}
-                  setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
-                  studySessions={activeSessions}
-                />
-              </div>
-              <GlobalConcursosCard concursos={concursosGlobais} syllabusItems={syllabusItems} onImport={(id) => { setIsImportConcursoOpen(true); setSelectedConcursoForImport(id); }} />
-              {concursosGlobais.length > 1 && (
-                <div className="card">
-                  <h2>
-                    <Eye size={20} />
-                    Comparação de Editais (Concursos Globais)
-                  </h2>
-                  <ContestComparison concursos={concursosGlobais} />
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                    onClick={() => {
+                      setEditingSession(null);
+                      setCurrentSubjectForSession(null);
+                      setInitialSessionData(null);
+                      setIsSessionModalOpen(true);
+                    }}
+                  >
+                    <CalendarDays size={16} />
+                    Registrar sessão
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                    onClick={() => setIsSubjectModalOpen(true)}
+                  >
+                    <PlusCircle size={16} />
+                    Nova matéria
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                    onClick={() => setIsSimuladoModalOpen(true)}
+                  >
+                    <Target size={16} />
+                    Registrar simulado
+                  </button>
+                  {globalEditais.length > 0 && activeSubjects.length > 0 && (
+                    <button
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                      onClick={() => setIsImportEditalOpen(true)}
+                    >
+                      <Upload size={16} />
+                      Importar edital
+                    </button>
+                  )}
                 </div>
+
+                {activeSubjects.length > 0 && (
+                  <div className="study-cycle-indicator">
+                    <div className="study-cycle-header">
+                      <span className="study-cycle-icon">🔄</span>
+                      <span className="study-cycle-title">Distribuição do ciclo de estudos</span>
+                    </div>
+                    <div className="study-cycle-subjects">
+                      {activeSubjects.map(subject => (
+                        <div
+                          key={subject.id}
+                          className="study-cycle-item"
+                          style={{
+                            backgroundColor: `${subject.color || '#38bdf8'}20`,
+                            borderLeft: `3px solid ${subject.color || '#38bdf8'}`
+                          }}
+                        >
+                          <span className="cycle-subject-name">{subject.name}</span>
+                          <span className="cycle-subject-weight">Peso: {subject.weight || 1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {activeSubjects.length === 0 ? (
+                <div className="card space-y-4 p-10 text-center">
+                  <h3 className="text-xl font-semibold text-white">Nenhuma matéria cadastrada</h3>
+                  <p className="text-sm text-slate-300">Adicione sua primeira matéria para liberar o ciclo de estudos.</p>
+                  <div className="flex justify-center">
+                    <button
+                      className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-5 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                      onClick={() => setIsSubjectModalOpen(true)}
+                    >
+                      <PlusCircle size={16} />
+                      Adicionar matéria
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="card p-6 sm:p-8">
+                    <Calendar
+                      studySessions={activeSessions}
+                      syllabusItems={activeSyllabusItems}
+                      onDateClick={() => {}}
+                    />
+                  </div>
+
+                  <SubjectsManagement
+                    subjects={activeSubjects}
+                    studySessions={activeSessions}
+                    setIsSubjectModalOpen={setIsSubjectModalOpen}
+                    setCurrentSubjectForSession={setCurrentSubjectForSession}
+                    setIsSessionModalOpen={setIsSessionModalOpen}
+                    setCurrentSubjectForSyllabus={setCurrentSubjectForSyllabus}
+                    setIsSyllabusModalOpen={setIsSyllabusModalOpen}
+                    setEditingSubject={setEditingSubject}
+                    setConfirmationDialog={setConfirmationDialog}
+                    handleDeleteSubject={handleDeleteSubject}
+                    getSubjectStudyTime={getSubjectStudyTime}
+                    calculateSubjectProgress={calculateSubjectProgress}
+                    setIsSessionHistoryModalOpen={setIsSessionHistoryModalOpen}
+                    setSelectedSubjectForHistory={setSelectedSubjectForHistory}
+                  />
+
+                  <div className="card space-y-6 p-6 sm:p-8">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <span className="text-xs uppercase tracking-[0.3em] text-slate-300">Edital</span>
+                        <h2 className="mt-1 text-xl font-semibold text-white">Visão geral das matérias</h2>
+                      </div>
+                      <span className="text-xs uppercase tracking-wide text-slate-400">
+                        {studiedItems}/{totalItems || 0} itens mapeados
+                      </span>
+                    </div>
+                    <SubjectsOverview
+                      subjects={activeSubjects}
+                      syllabusItems={activeSyllabusItems}
+                      setSyllabusItems={setSyllabusItems}
+                      expandedSubjects={expandedSubjects}
+                      setExpandedSubjects={setExpandedSubjects}
+                      getSubjectStudyTime={getSubjectStudyTime}
+                      setSelectedSyllabusItem={setSelectedSyllabusItem}
+                      setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
+                      studySessions={activeSessions}
+                    />
+                  </div>
+
+                  <GlobalConcursosCard
+                    concursos={concursosGlobais}
+                    syllabusItems={syllabusItems}
+                    onImport={(id) => {
+                      setIsImportConcursoOpen(true);
+                      setSelectedConcursoForImport(id);
+                    }}
+                  />
+
+                  {concursosGlobais.length > 1 && (
+                    <div className="card space-y-4 p-6 sm:p-8">
+                      <div className="flex items-center gap-2 text-slate-300">
+                        <Eye size={18} />
+                        <h3 className="text-lg font-semibold text-white">Comparação de editais</h3>
+                      </div>
+                      <ContestComparison concursos={concursosGlobais} />
+                    </div>
+                  )}
+
+                  <ProductHighlights
+                    subjects={activeSubjects}
+                    studySessions={activeSessions}
+                    syllabusItems={activeSyllabusItems}
+                  />
+
+                  <ExperienceAssurances />
+                </>
               )}
-            </div>
-          )}
-        </div>
-      )}
+            </section>
+
+            <aside className="space-y-6">
+              <div className="card space-y-4 p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs uppercase tracking-wide text-amber-200/80">Prioridades</span>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Revisões urgentes</h3>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-200">
+                    <AlertTriangle size={14} />
+                    {urgentReviewItems.length}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {urgentReviewItems.length > 0 ? (
+                    urgentReviewItems.map(item => (
+                      <div
+                        key={item.id}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-white">{item.name}</p>
+                          <p className="text-xs text-slate-400">{getSubjectLabel(item.subjectId)}</p>
+                        </div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-200">
+                          <CalendarClock size={12} />
+                          {formatDateLabel(item.nextReviewDate)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-white/5 bg-white/5 px-3 py-4 text-sm text-slate-300">
+                      Nenhuma revisão urgente no momento. Continue avançando! ✨
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="card space-y-4 p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs uppercase tracking-wide text-sky-200/80">Planejamento</span>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Próximas sessões</h3>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {upcomingSessions.length > 0 ? (
+                    upcomingSessions.map(session => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-white">{getSubjectLabel(session.subjectId)}</p>
+                          <p className="text-xs text-slate-400">
+                            {formatDateLabel(session.date)} • {formatDuration(session.duration)}
+                          </p>
+                          {session.topics && (
+                            <p className="mt-1 text-xs text-slate-500">{session.topics}</p>
+                          )}
+                        </div>
+                        <ChevronRight size={16} className="text-slate-500" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-white/5 bg-white/5 px-3 py-4 text-sm text-slate-300">
+                      Nenhuma sessão futura registrada.
+                      <button
+                        className="mt-3 inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                        onClick={() => {
+                          setEditingSession(null);
+                          setCurrentSubjectForSession(null);
+                          setInitialSessionData(null);
+                          setIsSessionModalOpen(true);
+                        }}
+                      >
+                        <CalendarDays size={14} />
+                        Planejar agora
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="card space-y-4 p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs uppercase tracking-wide text-slate-300">Preparação</span>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Próximos simulados</h3>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {upcomingSimulados.length > 0 ? (
+                    upcomingSimulados.map(simulado => (
+                      <div key={simulado.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{formatDateLabel(simulado.data)}</p>
+                            <p className="text-xs text-slate-400 capitalize">{simulado.tipo || 'Simulado'}</p>
+                          </div>
+                          <Target size={18} className="text-sky-200" />
+                        </div>
+                        {simulado.notaFinal !== undefined && simulado.notaFinal !== null && (
+                          <p className="mt-2 text-xs text-slate-300">Nota final: {simulado.notaFinal}</p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-white/5 bg-white/5 px-3 py-4 text-sm text-slate-300">
+                      Nenhum simulado agendado.
+                      <button
+                        className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/10"
+                        onClick={() => setIsSimuladoModalOpen(true)}
+                      >
+                        <Target size={14} />
+                        Criar simulado
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </aside>
+          </div>
+        )}
+      </div>
+      </div>
 
       {/* Modais */}
-      <ProfileModal 
+      <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => {
           setIsProfileModalOpen(false);
@@ -966,7 +1185,7 @@ function App() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

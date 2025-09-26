@@ -1,5 +1,91 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Eye, Edit2 } from 'lucide-react';
+import { CalendarClock, ChevronDown, ChevronUp, Eye, Edit2 } from 'lucide-react';
+
+const FILTER_OPTIONS = [
+  { id: 'todos', label: 'Todos os itens' },
+  { id: 'nao-estudados', label: 'Não estudados' },
+  { id: 'com-revisao', label: 'Com revisão' },
+  { id: 'estudados-sem-revisao', label: 'Revisão pendente' }
+];
+
+const getDaysDifferenceFromToday = (dateString) => {
+  if (!dateString) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const target = new Date(dateString);
+  if (Number.isNaN(target.getTime())) return null;
+  target.setHours(0, 0, 0, 0);
+
+  const diffMs = target.getTime() - today.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+};
+
+const formatReviewDateLabel = (dateString) => {
+  if (!dateString) return '';
+
+  return new Date(dateString).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short'
+  });
+};
+
+const describeReviewStatus = (dateString) => {
+  const diff = getDaysDifferenceFromToday(dateString);
+  if (diff === null) return null;
+
+  if (diff < 0) {
+    return {
+      variant: 'overdue',
+      label: `Atrasada há ${Math.abs(diff)}d (${formatReviewDateLabel(dateString)})`
+    };
+  }
+
+  if (diff === 0) {
+    return {
+      variant: 'today',
+      label: 'Hoje'
+    };
+  }
+
+  if (diff === 1) {
+    return {
+      variant: 'soon',
+      label: 'Amanhã'
+    };
+  }
+
+  return {
+    variant: 'upcoming',
+    label: `Em ${diff} dias (${formatReviewDateLabel(dateString)})`
+  };
+};
+
+const getAccuracyVariant = (accuracy) => {
+  if (accuracy >= 85) return 'high';
+  if (accuracy >= 70) return 'medium';
+  if (accuracy >= 50) return 'low';
+  return 'critical';
+};
+
+const getWeightColor = (weight) => {
+  const intensity = Math.min(weight / 100, 1);
+  return `rgba(248, 113, 113, ${0.25 + intensity * 0.35})`;
+};
+
+const truncate = (value = '', max = 40) => {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}…`;
+};
+
+const getSubjectUpcomingReview = (items) => {
+  const scheduled = items
+    .filter((item) => item.nextReviewDate)
+    .sort((a, b) => new Date(a.nextReviewDate) - new Date(b.nextReviewDate));
+
+  return scheduled[0];
+};
 
 export const SubjectsOverview = ({
   subjects,
@@ -16,18 +102,6 @@ export const SubjectsOverview = ({
   const [editingItem, setEditingItem] = useState(null);
   const [tempAccuracy, setTempAccuracy] = useState('');
   const [tempWeight, setTempWeight] = useState('');
-
-  const getAccuracyColor = (accuracy) => {
-    if (accuracy >= 80) return '#10b981'; // Verde
-    if (accuracy >= 60) return '#f59e0b'; // Amarelo
-    if (accuracy >= 40) return '#f97316'; // Laranja
-    return '#ef4444'; // Vermelho
-  };
-
-  const getWeightColor = (weight) => {
-    const intensity = Math.min(weight / 100, 1);
-    return `rgba(239, 68, 68, ${0.2 + intensity * 0.6})`; // Vermelho com intensidade baseada no peso
-  };
 
   const calculateNextReviewDate = (accuracy) => {
     const today = new Date();
@@ -161,7 +235,7 @@ export const SubjectsOverview = ({
   };
 
   return (
-    <div className="subjects-overview-new">
+    <div className="subjects-overview">
       {subjects.map(subject => {
         const subjectSyllabusItems = syllabusItems.filter(item => item.subjectId === subject.id);
         const filteredItems = filterItems(subjectSyllabusItems, subject.id);
@@ -174,325 +248,258 @@ export const SubjectsOverview = ({
           ? studiedItems.reduce((sum, item) => sum + (item.accuracy || 0), 0) / studiedItems.length
           : 0;
         const isExpanded = expandedSubjects[subject.id];
+        const upcomingReview = getSubjectUpcomingReview(subjectSyllabusItems);
+        const upcomingReviewStatus = upcomingReview ? describeReviewStatus(upcomingReview.nextReviewDate) : null;
+
+        const filterCounts = {
+          todos: subjectSyllabusItems.length,
+          'nao-estudados': subjectSyllabusItems.filter(item => !item.isStudied).length,
+          'com-revisao': subjectSyllabusItems.filter(item => item.isStudied && item.accuracy >= 0).length,
+          'estudados-sem-revisao': subjectSyllabusItems.filter(item => item.isStudied && (item.accuracy === undefined || item.accuracy < 0)).length
+        };
 
         return (
-          <div key={subject.id} className="subject-overview-new">
-            <div className="subject-header-new">
-              <div className="subject-info">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <h3 className="subject-name" style={{ margin: 0 }}>{subject.name}</h3>
-                  <button
-                    className="expand-btn"
-                    onClick={() => {
-                      const newExpanded = { ...expandedSubjects };
-                      newExpanded[subject.id] = !newExpanded[subject.id];
-                      setExpandedSubjects(newExpanded);
-                    }}
-                  >
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+          <article
+            key={subject.id}
+            className={`subject-card ${isExpanded ? 'subject-card--expanded' : ''}`}
+          >
+            <header className="subject-card__header">
+              <div className="subject-card__title-row">
+                <div>
+                  <h3 className="subject-card__title">{subject.name}</h3>
+                  <div className="subject-card__meta">
+                    <span className="subject-card__meta-pill">{subjectSyllabusItems.length} itens</span>
+                    <span className="subject-card__meta-pill">{studiedItems.length} estudados</span>
+                    <span className="subject-card__meta-pill">{totalStudyTime.toFixed(1)}h investidas</span>
+                  </div>
+                </div>
+                <button
+                  className="subject-card__toggle"
+                  onClick={() => {
+                    const newExpanded = { ...expandedSubjects };
+                    newExpanded[subject.id] = !newExpanded[subject.id];
+                    setExpandedSubjects(newExpanded);
+                  }}
+                  aria-label={isExpanded ? 'Recolher matéria' : 'Expandir matéria'}
+                  type="button"
+                >
+                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+              </div>
+
+              <div className="subject-card__insights">
+                <div className="subject-card__progress">
+                  <div className="subject-card__progress-track">
+                    <div
+                      className="subject-card__progress-fill"
+                      style={{ width: `${studiedPercentage}%` }}
+                      aria-hidden
+                    />
+                  </div>
+                  <div className="subject-card__progress-meta">
+                    <span>{studiedPercentage.toFixed(0)}% do edital mapeado</span>
+                    <span>Média de acertos {averageAccuracy.toFixed(0)}%</span>
+                  </div>
                 </div>
 
-                {isExpanded && (
-                  <>
-                    <div className="subject-stats-compact" style={{
-                      marginBottom: '6px',
-                      fontSize: '0.7rem',
-                      color: '#64748b',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '6px',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        {studiedItems.length} de {subjectSyllabusItems.length} itens ({studiedPercentage.toFixed(0)}%)
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        Média: {averageAccuracy.toFixed(0)}%
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        {totalStudyTime.toFixed(1)}h estudadas
-                      </span>
+                {upcomingReviewStatus ? (
+                  <div className={`subject-card__next-review subject-card__next-review--${upcomingReviewStatus.variant}`}>
+                    <CalendarClock size={16} />
+                    <div className="subject-card__next-review-text">
+                      <span className="value">{upcomingReviewStatus.label}</span>
+                      <span className="hint">{truncate(upcomingReview?.name || '')}</span>
                     </div>
-
-                    <div className="subject-controls" style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '6px'
-                    }}>
-                      <div className="filter-tabs" style={{ display: 'flex', gap: '3px' }}>
-                        <button
-                          className={`filter-tab ${(!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'todos' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? '#3b82f6' : '#e2e8f0',
-                            color: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Todos
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'nao-estudados' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'nao-estudados' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'nao-estudados' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'nao-estudados' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Não Estudados
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'com-revisao' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'com-revisao' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'com-revisao' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'com-revisao' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Com Revisão
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'estudados-sem-revisao' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'estudados-sem-revisao' }))}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'estudados-sem-revisao' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'estudados-sem-revisao' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Estudados ({studiedPercentage.toFixed(0)}% Rev.)
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {isExpanded && (
-              <div className="subject-content-new">
-                {filteredItems.length === 0 ? (
-                  <div className="no-items">
-                    Nenhum item corresponde ao filtro selecionado.
                   </div>
                 ) : (
-                  <div className="syllabus-items-list">
-                    {filteredItems.map(item => {
+                  studiedItems.length > 0 && (
+                    <div className="subject-card__next-review subject-card__next-review--empty">
+                      <CalendarClock size={16} />
+                      <div className="subject-card__next-review-text">
+                        <span className="value">Sem revisão agendada</span>
+                        <span className="hint">Defina a próxima revisão para manter o ritmo</span>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </header>
+
+            {isExpanded && (
+              <div className="subject-card__body">
+                <div className="subject-card__filters">
+                  {FILTER_OPTIONS.map(option => {
+                    const isActive = (activeFilters[subject.id] || 'todos') === option.id;
+
+                    return (
+                      <button
+                        key={option.id}
+                        className={`filter-pill ${isActive ? 'filter-pill--active' : ''}`}
+                        onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: option.id }))}
+                        type="button"
+                      >
+                        <span>{option.label}</span>
+                        <span className="filter-pill__counter">{filterCounts[option.id]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="subject-card__content">
+                  {filteredItems.length === 0 ? (
+                    <div className="subject-card__empty">Nenhum item corresponde ao filtro selecionado.</div>
+                  ) : (
+                    filteredItems.map(item => {
                       const hierarchyLevel = getHierarchyLevel(item.name);
                       const isSubItemFlag = isSubItem(item.name);
+                      const sessionAccuracy = getItemAccuracyFromSessions(item.id);
+                      const displayAccuracy = sessionAccuracy !== null && sessionAccuracy !== undefined
+                        ? sessionAccuracy
+                        : item.accuracy;
+                      const accuracyVariant = displayAccuracy !== undefined ? getAccuracyVariant(displayAccuracy) : null;
+                      const reviewStatus = item.nextReviewDate ? describeReviewStatus(item.nextReviewDate) : null;
 
                       return (
                         <div
                           key={item.id}
-                          className="syllabus-item-row"
+                          className={`syllabus-item-card ${isSubItemFlag ? 'syllabus-item-card--nested' : ''}`}
                           style={{
-                            backgroundColor: item.weight ? getWeightColor(item.weight) : undefined,
-                            marginLeft: `${hierarchyLevel * 20}px`, // Recuo de 20px por nível
-                            borderLeft: isSubItemFlag ? '3px solid rgba(59, 130, 246, 0.3)' : 'none',
-                            paddingLeft: isSubItemFlag ? '12px' : '8px'
+                            marginLeft: `${hierarchyLevel * 20}px`
                           }}
                         >
-                          <div className="item-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div className="syllabus-item-card__header">
+                            <div className="syllabus-item-card__title-group">
                               <span
-                                className="item-name"
-                                style={{
-                                  fontSize: isSubItemFlag ? '0.85rem' : '0.9rem',
-                                  fontWeight: isSubItemFlag ? '400' : '500',
-                                  color: isSubItemFlag ? '#94a3b8' : '#e2e8f0'
+                                className="syllabus-item-card__marker"
+                                style={{ backgroundColor: item.weight !== undefined ? getWeightColor(item.weight) : undefined }}
+                                aria-hidden
+                              />
+                              <span className="syllabus-item-card__title">{item.name}</span>
+                            </div>
+                            <div className="syllabus-item-card__action-group">
+                              <button
+                                className="subject-card__icon-btn"
+                                onClick={() => {
+                                  setSelectedSyllabusItem(item);
+                                  setIsItemDetailsModalOpen(true);
                                 }}
+                                title="Histórico do item"
+                                type="button"
                               >
-                                {item.name}
+                                <Eye size={14} />
+                              </button>
+
+                              <button
+                                className="subject-card__icon-btn"
+                                onClick={() => {
+                                  setEditingItem(item.id);
+                                  setTempAccuracy(item.accuracy?.toString() || '');
+                                  setTempWeight(item.weight?.toString() || '');
+                                }}
+                                title="Editar percentuais"
+                                type="button"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="syllabus-item-card__meta">
+                            {displayAccuracy !== undefined && (
+                              <span
+                                className={`item-chip item-chip--accuracy item-chip--accuracy-${accuracyVariant}`}
+                                title={sessionAccuracy !== null ? 'Baseado nas sessões registradas' : 'Definido manualmente'}
+                              >
+                                {displayAccuracy}% acerto
+                                {sessionAccuracy !== null && (
+                                  <span className="item-chip__note">auto</span>
+                                )}
                               </span>
+                            )}
 
-                            <div className="item-stats" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {(() => {
-                              // Priorizar percentual de acerto das sessões, depois o manual
-                              const sessionAccuracy = getItemAccuracyFromSessions(item.id);
-                              const displayAccuracy = sessionAccuracy !== null ? sessionAccuracy : item.accuracy;
+                            {item.weight !== undefined && (
+                              <span className="item-chip item-chip--weight">Peso {item.weight}%</span>
+                            )}
 
-                              return displayAccuracy !== undefined && (
-                                <div
-                                  className="accuracy-triangle"
-                                  style={{
-                                    backgroundColor: getAccuracyColor(displayAccuracy),
-                                    color: 'white',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 'bold',
-                                    marginRight: '8px'
-                                  }}
-                                  title={sessionAccuracy !== null ? 'Baseado nas sessões de estudo' : 'Definido manualmente'}
+                            {reviewStatus && (
+                              <span className={`item-chip item-chip--review item-chip--review-${reviewStatus.variant}`}>
+                                Revisão {reviewStatus.label.toLowerCase()}
+                              </span>
+                            )}
+
+                            {!item.isStudied && (
+                              <span className="item-chip item-chip--status">Ainda não estudado</span>
+                            )}
+                          </div>
+
+                          {editingItem === item.id && (
+                            <div className="syllabus-item-card__editor">
+                              <div className="editor-field">
+                                <label htmlFor={`accuracy-${item.id}`}>% de acerto</label>
+                                <input
+                                  id={`accuracy-${item.id}`}
+                                  type="number"
+                                  value={tempAccuracy}
+                                  onChange={(e) => setTempAccuracy(e.target.value)}
+                                  className="editor-input"
+                                  min="0"
+                                  max="100"
+                                  placeholder="0-100"
+                                />
+                              </div>
+
+                              <div className="editor-field">
+                                <label htmlFor={`weight-${item.id}`}>Peso no edital</label>
+                                <input
+                                  id={`weight-${item.id}`}
+                                  type="number"
+                                  value={tempWeight}
+                                  onChange={(e) => setTempWeight(e.target.value)}
+                                  className="editor-input"
+                                  min="0"
+                                  max="100"
+                                  placeholder="0-100"
+                                />
+                              </div>
+
+                              <div className="editor-actions">
+                                <button
+                                  className="editor-btn editor-btn--primary"
+                                  onClick={() => handleSaveAccuracy(item.id)}
+                                  disabled={!tempAccuracy}
+                                  type="button"
                                 >
-                                  {displayAccuracy}%
-                                </div>
-                              );
-                            })()}
-
-                              {item.weight !== undefined && (
-                                <div
-                                  style={{
-                                    fontSize: '0.7rem',
-                                    color: '#94a3b8'
-                                  }}
+                                  Salvar % acerto
+                                </button>
+                                <button
+                                  className="editor-btn editor-btn--success"
+                                  onClick={() => handleSaveWeight(item.id)}
+                                  disabled={!tempWeight}
+                                  type="button"
                                 >
-                                  Peso: {item.weight}%
-                                </div>
-                              )}
+                                  Salvar peso
+                                </button>
+                                <button
+                                  className="editor-btn editor-btn--ghost"
+                                  onClick={() => {
+                                    setEditingItem(null);
+                                    setTempAccuracy('');
+                                    setTempWeight('');
+                                  }}
+                                  type="button"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
                             </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <button
-                              className="details-btn"
-                              onClick={() => {
-                                setSelectedSyllabusItem(item);
-                                setIsItemDetailsModalOpen(true);
-                              }}
-                              title="Histórico de Item"
-                            >
-                              <Eye size={12} />
-                            </button>
-
-                            <button
-                              className="details-btn"
-                              onClick={() => {
-                                setEditingItem(item.id);
-                                setTempAccuracy(item.accuracy?.toString() || '');
-                                setTempWeight(item.weight?.toString() || '');
-                              }}
-                              title="Editar % Acerto e Peso"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                          </div>
+                          )}
                         </div>
-
-                        {editingItem === item.id && (
-                          <div className="edit-controls" style={{
-                            marginTop: '8px',
-                            padding: '8px',
-                            background: 'rgba(15, 23, 42, 0.8)',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems: 'center',
-                            flexWrap: 'wrap'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <label style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>% Acerto:</label>
-                              <input
-                                type="number"
-                                value={tempAccuracy}
-                                onChange={(e) => setTempAccuracy(e.target.value)}
-                                className="accuracy-input"
-                                style={{ width: '60px' }}
-                                min="0"
-                                max="100"
-                                placeholder="0-100"
-                              />
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <label style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>% Peso:</label>
-                              <input
-                                type="number"
-                                value={tempWeight}
-                                onChange={(e) => setTempWeight(e.target.value)}
-                                className="accuracy-input"
-                                style={{ width: '60px' }}
-                                min="0"
-                                max="100"
-                                placeholder="0-100"
-                              />
-                            </div>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => handleSaveAccuracy(item.id)}
-                              style={{ fontSize: '0.7rem', padding: '4px 8px' }}
-                              disabled={!tempAccuracy}
-                            >
-                              Salvar %
-                            </button>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => handleSaveWeight(item.id)}
-                              style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#059669' }}
-                              disabled={!tempWeight}
-                            >
-                              Salvar Peso
-                            </button>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => {
-                                setEditingItem(null);
-                                setTempAccuracy('');
-                                setTempWeight('');
-                              }}
-                              style={{
-                                fontSize: '0.7rem',
-                                padding: '4px 8px',
-                                background: '#6b7280'
-                              }}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                    })}
-                  </div>
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
-          </div>
+          </article>
         );
       })}
     </div>

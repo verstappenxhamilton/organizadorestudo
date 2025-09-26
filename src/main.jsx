@@ -3,9 +3,7 @@
  */
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-import AdminPage from './Admin.jsx';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Router from './components/Router.jsx';
 import './index.css';
 
 // Simple startup log
@@ -28,11 +26,6 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    </BrowserRouter>
+    <Router />
   </React.StrictMode>
 );
