@@ -15,45 +15,47 @@ export const SessionModal = ({
     subjectId: '',
     date: '',
     duration: 0,
-    topics: '',
+    syllabusItemId: '',
+    accuracy: '',
     notes: '',
-    difficulty: 'medium',
-    satisfaction: 5
+    isReview: false,
+    nextReviewDate: '',
+    reviewDays: null,
+    noNextReview: false
   });
 
   useEffect(() => {
+    // Reset or populate form data based on props
+    const defaultDate = new Date().toISOString().split('T')[0];
+    
     if (editingSession) {
       setFormData({
         subjectId: editingSession.subjectId || '',
-        date: editingSession.date || '',
+        date: editingSession.date || defaultDate,
         duration: editingSession.duration || 0,
-        topics: editingSession.topics || '',
+        syllabusItemId: editingSession.syllabusItemId || '',
+        accuracy: editingSession.accuracy || '',
         notes: editingSession.notes || '',
-        difficulty: editingSession.difficulty || 'medium',
-        satisfaction: editingSession.satisfaction || 5
-      });
-    } else if (initialSessionData) {
-      setFormData({
-        subjectId: initialSessionData.subjectId || '',
-        date: new Date().toISOString().split('T')[0],
-        duration: 0,
-        topics: '',
-        notes: '',
-        difficulty: 'medium',
-        satisfaction: 5
+        isReview: editingSession.isReview || false,
+        nextReviewDate: editingSession.nextReviewDate || '',
+        reviewDays: null,
+        noNextReview: false
       });
     } else {
       setFormData({
-        subjectId: currentSubjectForSession || '',
-        date: new Date().toISOString().split('T')[0],
+        subjectId: initialSessionData?.subjectId || currentSubjectForSession || '',
+        date: defaultDate,
         duration: 0,
-        topics: '',
+        syllabusItemId: '',
+        accuracy: '',
         notes: '',
-        difficulty: 'medium',
-        satisfaction: 5
+        isReview: false,
+        nextReviewDate: '',
+        reviewDays: null,
+        noNextReview: false
       });
     }
-  }, [editingSession, initialSessionData, currentSubjectForSession]);
+  }, [editingSession, initialSessionData, currentSubjectForSession, isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -62,208 +64,224 @@ export const SessionModal = ({
       showToast('Selecione uma matéria', 'warning');
       return;
     }
-
     if (!formData.date) {
       showToast('Data é obrigatória', 'warning');
       return;
     }
-
     if (formData.duration <= 0) {
       showToast('Duração deve ser maior que zero', 'warning');
       return;
     }
 
-    onSubmit(formData);
+    const submissionData = {
+      ...formData,
+      // Convert duration from minutes back to store (if needed) or keep as minutes
+      // Assuming store expects minutes, but UI input is in hours?
+      // Wait, input is in hours (value={formData.duration / 60}). So store is minutes.
+      // Correcting input logic below.
+    };
+
+    onSubmit(submissionData);
   };
 
   if (!isOpen) return null;
 
+  const relevantSyllabusItems = formData.subjectId 
+    ? syllabusItems.filter(item => item.subjectId === formData.subjectId)
+    : [];
+
   return (
     <div className="modal-overlay" onClick={(e) => {
-      if (e.target === e.currentTarget) {
-        onClose();
-      }
+      if (e.target === e.currentTarget) onClose();
     }}>
-      <div className="modal session-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>
-          {editingSession ? 'Editar Sessão' : 'Registrar Sessão de Estudo'}
-          <button className="close-btn" onClick={onClose}>
-            ×
-          </button>
+          {editingSession ? 'Editar Sessão' : 'Registrar Sessão'}
+          <button className="close-btn" onClick={onClose}>×</button>
         </h2>
 
-        <div className="p-6 session-modal-content custom-scrollbar">
-          <form onSubmit={handleSubmit}>
+        <div className="modal-content-scroll">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            
+            {/* Subject Select */}
             <div className="form-group">
-              <label className="form-label">Matéria <span className="text-red-500">*</span></label>
+              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                Matéria <span className="text-red-500">*</span>
+              </label>
               <select
-                className="form-select"
+                className="form-select w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
                 value={formData.subjectId}
-                onChange={(e) => setFormData(prev => ({ ...prev, subjectId: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, subjectId: e.target.value, syllabusItemId: '' }))}
                 required
               >
                 <option value="">Selecione uma matéria</option>
                 {subjects.map(subject => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
+                  <option key={subject.id} value={subject.id}>{subject.name}</option>
                 ))}
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Data <span className="text-red-500">*</span></label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              {/* Date Input */}
+              <div className="form-group">
+                <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                  Data <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
+                  value={formData.date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  required
+                />
+              </div>
+
+              {/* Duration Input */}
+              <div className="form-group">
+                <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                  Duração (h) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
+                  value={formData.duration > 0 ? formData.duration / 60 : ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, duration: parseFloat(e.target.value) * 60 || 0 }))}
+                  min="0.1"
+                  placeholder="1.5"
+                  required
+                />
+              </div>
             </div>
 
+            {/* Syllabus Item Select */}
             <div className="form-group">
-              <label className="form-label">Duração (horas) <span className="text-red-500">*</span></label>
-              <input
-                type="number"
-                step="0.1"
-                className="form-input"
-                value={formData.duration / 60}
-                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseFloat(e.target.value) * 60 || 0 }))}
-                min="0.1"
-                placeholder="Ex: 1.5"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Item do Edital (opcional)</label>
+              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                Tópico Estudado (opcional)
+              </label>
               <select
-                className="form-select"
-                value={formData.syllabusItemId || ''}
+                className="form-select w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
+                value={formData.syllabusItemId}
                 onChange={(e) => setFormData(prev => ({ ...prev, syllabusItemId: e.target.value }))}
+                disabled={!formData.subjectId}
               >
-                <option value="">Selecione um item</option>
-                {formData.subjectId && syllabusItems
-                  .filter(item => item.subjectId === formData.subjectId)
-                  .map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
+                <option value="">Selecione um tópico</option>
+                {relevantSyllabusItems.map(item => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
               </select>
             </div>
 
+            {/* Accuracy Input */}
             <div className="form-group">
-              <label className="form-label">Percentual de Acerto (%) (opcional)</label>
+              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                % de Acerto (opcional)
+              </label>
               <input
                 type="number"
-                className="form-input"
-                value={formData.accuracy || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, accuracy: parseFloat(e.target.value) || 0 }))}
+                className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
+                value={formData.accuracy}
+                onChange={(e) => setFormData(prev => ({ ...prev, accuracy: parseFloat(e.target.value) || '' }))}
                 min="0"
                 max="100"
-                placeholder="0-100"
+                placeholder="Ex: 85"
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Observações</label>
-              <textarea
-                className="form-textarea"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder=""
-                rows="3"
+            {/* Review Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="form-checkbox rounded border-gray-600 text-blue-600 bg-slate-800 focus:ring-offset-0 focus:ring-blue-500"
+                checked={formData.isReview}
+                onChange={(e) => setFormData(prev => ({ ...prev, isReview: e.target.checked }))}
               />
-            </div>
+              <span className="text-sm text-gray-300">Foi apenas revisão?</span>
+            </label>
 
-            <div className="form-group">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  checked={formData.isReview || false}
-                  onChange={(e) => setFormData(prev => ({ ...prev, isReview: e.target.checked }))}
-                />
-                <span className="text-sm text-gray-700">Esta sessão foi de revisão?</span>
+            {/* Next Review Scheduler */}
+            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-3">
+                Agendar Próxima Revisão
               </label>
-            </div>
-
-            {/* Agendamento de Revisão */}
-            <div className="form-group">
-              <label className="form-label">Agendar próxima revisão em:</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              
+              <div className="flex flex-wrap gap-2 mb-3">
                 {[1, 3, 7, 15, 30].map(days => (
                   <button
                     key={days}
                     type="button"
                     onClick={() => {
-                      const nextReviewDate = new Date();
-                      nextReviewDate.setDate(nextReviewDate.getDate() + days);
+                      const nextDate = new Date();
+                      nextDate.setDate(nextDate.getDate() + days);
                       setFormData(prev => ({
                         ...prev,
-                        nextReviewDate: nextReviewDate.toISOString().split('T')[0],
-                        reviewDays: days
+                        nextReviewDate: nextDate.toISOString().split('T')[0],
+                        reviewDays: days,
+                        noNextReview: false
                       }));
                     }}
-                    style={{
-                      padding: '8px 16px',
-                      background: formData.reviewDays === days ? '#8b5cf6' : '#6b46c1',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '20px',
-                      fontSize: '0.9rem',
-                      cursor: 'pointer'
-                    }}
+                    className={`
+                      px-3 py-1 rounded-full text-xs font-medium border transition-colors
+                      ${formData.reviewDays === days 
+                        ? 'bg-indigo-600 border-indigo-500 text-white' 
+                        : 'bg-slate-800 border-slate-600 text-gray-400 hover:border-indigo-500 hover:text-indigo-400'}
+                    `}
                   >
-                    {days} dia{days > 1 ? 's' : ''}
+                    {days}d
                   </button>
                 ))}
               </div>
 
-              {formData.nextReviewDate && (
-                <div style={{
-                  padding: '8px 12px',
-                  background: 'rgba(139, 92, 246, 0.1)',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                  color: '#8b5cf6'
-                }}>
-                  Revisão será agendada para: {new Date(formData.nextReviewDate).toLocaleDateString('pt-BR')}
+              {formData.nextReviewDate && !formData.noNextReview && (
+                <div className="text-xs text-indigo-400 font-medium mb-2">
+                  Agendada para: {new Date(formData.nextReviewDate).toLocaleDateString('pt-BR')}
                 </div>
               )}
 
-              <label className="flex items-center gap-2 mt-3">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  checked={formData.noNextReview || false}
+                  className="form-checkbox rounded border-gray-600 text-gray-500 bg-slate-800 focus:ring-offset-0 focus:ring-gray-500"
+                  checked={formData.noNextReview}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     noNextReview: e.target.checked,
-                    nextReviewDate: e.target.checked ? null : prev.nextReviewDate
+                    nextReviewDate: e.target.checked ? '' : prev.nextReviewDate,
+                    reviewDays: e.target.checked ? null : prev.reviewDays
                   }))}
                 />
-                <span className="text-sm text-gray-700">Não agendar revisão</span>
+                <span className="text-xs text-gray-500">Não agendar revisão</span>
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            {/* Notes */}
+            <div className="form-group">
+              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">Observações</label>
+              <textarea
+                className="form-textarea w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none resize-none h-20 text-sm"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Detalhes..."
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700 mt-2">
               <button
                 type="button"
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="btn btn-secondary px-4 py-2 rounded text-sm font-medium text-gray-300 hover:text-white transition-colors"
                 onClick={onClose}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="btn btn-primary px-6 py-2 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
               >
-                {editingSession ? 'Salvar Alterações' : 'Registrar Sessão'}
+                {editingSession ? 'Salvar' : 'Registrar'}
               </button>
             </div>
+
           </form>
         </div>
       </div>

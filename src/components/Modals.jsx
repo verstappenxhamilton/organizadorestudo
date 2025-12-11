@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Eye } from 'lucide-react';
+import { X, Eye, PlusCircle } from 'lucide-react';
 import { SyllabusProcessor } from './SyllabusProcessor';
 
 // Modal de Perfil
@@ -201,41 +201,49 @@ export const SubjectModal = ({
 
         <div className="p-6">
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Nome da Matéria <span className="text-red-500">*</span></label>
+            <div className="form-group mb-4">
+              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                Nome da Matéria <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
-                className="form-input"
+                className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 focus:outline-none"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Matemática"
+                placeholder="Ex: Direito Constitucional"
                 required
+                autoFocus
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Meta de Horas (opcional)</label>
+            <div className="form-group mb-6">
+              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
+                Meta de Horas (opcional)
+              </label>
               <input
                 type="number"
-                className="form-input"
+                className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 focus:outline-none"
                 value={formData.targetHours}
                 onChange={(e) => setFormData(prev => ({ ...prev, targetHours: parseInt(e.target.value) || 0 }))}
                 min="0"
-                placeholder="23"
+                placeholder="Ex: 50"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Define um objetivo de horas totais para estudar esta matéria.
+              </p>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
               <button
                 type="button"
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="btn btn-secondary px-4 py-2 rounded text-sm font-medium text-gray-300 hover:text-white transition-colors"
                 onClick={onClose}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="btn btn-primary px-6 py-2 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!formData.name.trim()}
               >
                 {editingSubject ? 'Salvar Alterações' : 'Salvar Matéria'}
@@ -378,6 +386,49 @@ export const SyllabusModal = ({
 }) => {
   const [newItemName, setNewItemName] = useState('');
 
+  // Styles for this modal
+  const modalStyles = `
+    .syllabus-manager-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-height: 80vh;
+    }
+
+    .add-item-card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .add-item-input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .items-list-container {
+      flex: 1;
+      overflow-y: auto;
+      background: rgba(15, 23, 42, 0.3);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 640px) {
+      .add-item-input-group {
+        flex-direction: column;
+      }
+      .add-item-input-group button {
+        width: 100%;
+      }
+    }
+  `;
+
   const handleAddItem = () => {
     if (!newItemName.trim()) {
       showToast('Nome do item é obrigatório', 'warning');
@@ -431,9 +482,20 @@ export const SyllabusModal = ({
 
   const handleMoveItemUp = (item) => {
     const currentIndex = syllabusItems.findIndex(i => i.id === item.id);
-    if (currentIndex > 0) {
+    if (currentIndex === -1) return;
+
+    // Find the previous item with the same subjectId
+    let targetIndex = -1;
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (syllabusItems[i].subjectId === item.subjectId) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex !== -1) {
       const newItems = [...syllabusItems];
-      [newItems[currentIndex], newItems[currentIndex - 1]] = [newItems[currentIndex - 1], newItems[currentIndex]];
+      [newItems[currentIndex], newItems[targetIndex]] = [newItems[targetIndex], newItems[currentIndex]];
       setSyllabusItems(newItems);
       localStorage.setItem('syllabusItems', JSON.stringify(newItems));
     }
@@ -441,9 +503,20 @@ export const SyllabusModal = ({
 
   const handleMoveItemDown = (item) => {
     const currentIndex = syllabusItems.findIndex(i => i.id === item.id);
-    if (currentIndex < syllabusItems.length - 1) {
+    if (currentIndex === -1) return;
+
+    // Find the next item with the same subjectId
+    let targetIndex = -1;
+    for (let i = currentIndex + 1; i < syllabusItems.length; i++) {
+      if (syllabusItems[i].subjectId === item.subjectId) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex !== -1) {
       const newItems = [...syllabusItems];
-      [newItems[currentIndex], newItems[currentIndex + 1]] = [newItems[currentIndex + 1], newItems[currentIndex]];
+      [newItems[currentIndex], newItems[targetIndex]] = [newItems[targetIndex], newItems[currentIndex]];
       setSyllabusItems(newItems);
       localStorage.setItem('syllabusItems', JSON.stringify(newItems));
     }
@@ -460,6 +533,7 @@ export const SyllabusModal = ({
       }
     }}>
       <div className="modal large" onClick={(e) => e.stopPropagation()}>
+        <style>{modalStyles}</style>
         <h2>
           Gerenciar Edital - {currentSubjectForSyllabus.name}
           <button className="close-btn" onClick={onClose}>
@@ -467,23 +541,22 @@ export const SyllabusModal = ({
           </button>
         </h2>
 
-        <div className="p-4 custom-scrollbar" style={{ maxHeight: 'calc(90vh - 100px)', overflowY: 'auto' }}>
-          {/* Adicionar item individual */}
-          <div className="form-group">
-            <label className="form-label">Novo Item do Edital (Individual)</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="p-6 syllabus-manager-container">
+          {/* Section: Add New Item */}
+          <div className="add-item-card">
+            <h3 style={{ fontSize: '0.9rem', color: '#cbd5e1', marginBottom: '8px', marginTop: 0 }}>
+              Adicionar Novo Tópico
+            </h3>
+            <div className="add-item-input-group">
               <input
                 type="text"
                 className="form-input"
+                style={{ flex: 1 }}
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => e.stopPropagation()}
-                placeholder="Nome do tópico/artigo"
+                placeholder="Digite o nome do tópico ou subtópico..."
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddItem();
-                  }
+                  if (e.key === 'Enter') handleAddItem();
                 }}
               />
               <button
@@ -491,28 +564,28 @@ export const SyllabusModal = ({
                 onClick={handleAddItem}
                 disabled={!newItemName.trim()}
               >
+                <PlusCircle size={16} />
                 Adicionar
               </button>
             </div>
           </div>
 
-          {/* Processador de Edital Melhorado */}
-          <SyllabusProcessor
-            onAddMultipleItems={handleAddMultipleItems}
-            showToast={showToast}
-            syllabusItems={subjectItems}
-            onUpdateItemName={handleUpdateItemName}
-            onDeleteItem={handleDeleteItem}
-            onMoveItemUp={handleMoveItemUp}
-            onMoveItemDown={handleMoveItemDown}
-          />
+          {/* Section: List Items */}
+          <div className="items-list-container custom-scrollbar">
+            <SyllabusProcessor
+              onAddMultipleItems={handleAddMultipleItems}
+              showToast={showToast}
+              syllabusItems={subjectItems}
+              onUpdateItemName={handleUpdateItemName}
+              onDeleteItem={handleDeleteItem}
+              onMoveItemUp={handleMoveItemUp}
+              onMoveItemDown={handleMoveItemDown}
+            />
+          </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 text-right">
-          <button
-            className="btn btn-secondary"
-            onClick={onClose}
-          >
+        <div className="p-4 border-t border-gray-200 text-right" style={{ marginTop: 'auto' }}>
+          <button className="btn btn-secondary" onClick={onClose}>
             Fechar
           </button>
         </div>

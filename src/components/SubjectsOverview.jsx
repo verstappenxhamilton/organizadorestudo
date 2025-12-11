@@ -1,520 +1,734 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Eye, Edit2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, Edit2, CheckCircle, ListChecks, History, Edit, Trash2 } from 'lucide-react';
 
-export const SubjectsOverview = ({
-  subjects,
-  syllabusItems,
-  setSyllabusItems,
-  expandedSubjects,
-  setExpandedSubjects,
-  getSubjectStudyTime,
-  setSelectedSyllabusItem,
-  setIsItemDetailsModalOpen,
-  studySessions
+/* --- MODERN UI STYLES --- */
+const STYLES = `
+  /* VARIABLES */
+  .subjects-container {
+    --bg-base: #0f172a; /* Slate 900 */
+    --bg-card: #1e293b; /* Slate 800 */
+    --bg-card-hover: #334155; /* Slate 700 */
+    --bg-contrast: #020617; /* Slate 950 */
+    
+    --border-subtle: rgba(148, 163, 184, 0.1);
+    --border-focus: rgba(59, 130, 246, 0.5);
+    
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    
+    --accent-primary: #3b82f6;
+    --accent-success: #10b981;
+    --accent-warning: #f59e0b;
+    --accent-danger: #ef4444;
+    --accent-info: #0ea5e9;
+  }
+
+  /* LAYOUT CONTAINER */
+  .subjects-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+
+  /* CARD BASE (Desktop Default) */
+  .subject-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+  }
+
+  .subject-card:hover {
+    border-color: var(--border-focus);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  /* HEADER SECTION */
+  .card-header {
+    padding: 16px;
+    cursor: pointer;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
+  }
+
+  .header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .header-title-group {
+    flex: 1;
+  }
+
+  .header-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+  }
+
+  .header-chevron {
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .card-header:hover .header-chevron {
+    background: rgba(255,255,255,0.1);
+    color: white;
+  }
+
+  /* PROGRESS BAR */
+  .progress-track {
+    height: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: var(--accent-primary);
+    border-radius: 3px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* STATS PILLS */
+  .stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .stat-pill {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+
+  /* EXPANDED CONTENT AREA */
+  .expanded-content {
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ACTION TOOLBAR */
+  .toolbar {
+    padding: 12px 16px;
+    background: var(--bg-contrast);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+  }
+  .toolbar::-webkit-scrollbar { display: none; }
+
+  .btn-action {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .btn-action span { display: inline-block; }
+
+  .btn-action.primary { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+  .btn-action.primary:hover { background: rgba(59, 130, 246, 0.2); }
+
+  .btn-action.info { background: rgba(6, 182, 212, 0.1); color: #22d3ee; border-color: rgba(6, 182, 212, 0.3); }
+  .btn-action.info:hover { background: rgba(6, 182, 212, 0.2); }
+
+  .btn-action.secondary { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
+  .btn-action.secondary:hover { background: rgba(148, 163, 184, 0.2); }
+
+  .btn-action.warning { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+  .btn-action.warning:hover { background: rgba(245, 158, 11, 0.2); }
+
+  .btn-action.danger { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+  .btn-action.danger:hover { background: rgba(239, 68, 68, 0.2); }
+  
+  .btn-action.ghost { background: transparent; color: var(--text-secondary); padding: 8px; }
+  .btn-action.ghost:hover { background: rgba(255,255,255,0.05); color: white; }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  .filter-chip {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  
+  .filter-chip:hover { background: rgba(255,255,255,0.05); }
+  
+  .filter-chip.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  /* SYLLABUS LIST */
+  .syllabus-container {
+    padding-bottom: 12px;
+  }
+
+  .syllabus-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background 0.1s;
+  }
+  .syllabus-row:last-child { border-bottom: none; }
+  .syllabus-row:hover { background: rgba(255,255,255,0.02); }
+
+  .item-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .item-title {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .item-title.bold { font-weight: 700; color: white; font-size: 0.95rem; }
+  .item-title.sub { font-weight: 400; color: var(--text-secondary); font-size: 0.85rem; }
+
+  .item-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .icon-btn {
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+  /* EDIT MODE */
+  .edit-mode {
+    padding: 12px 16px;
+    background: var(--bg-contrast);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .edit-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    width: 70px;
+  }
+
+  /* --- MOBILE SPECIFIC (< 640px) --- */
+  @media (max-width: 640px) {
+    /* Reset Container padding influence */
+    .subjects-container {
+      gap: 0;
+      width: calc(100% + 24px); /* Counteract typical 12px padding */
+      margin-left: -12px;
+      margin-right: -12px;
+    }
+
+    .subject-card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-top: none;
+      border-bottom: 1px solid rgba(255,255,255,0.1); /* Single clean line */
+      background: rgba(30, 41, 59, 0.4); /* Slightly transparent on mobile */
+      margin-bottom: 0;
+    }
+    
+    .card-header {
+      padding: 16px 12px;
+    }
+
+    .header-main {
+      margin-bottom: 16px;
+    }
+
+    .header-title {
+      font-size: 1rem;
+    }
+
+    .toolbar {
+      padding: 12px;
+      gap: 8px;
+    }
+    .btn-action {
+      padding: 8px 12px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .syllabus-row {
+      padding: 12px;
+    }
+    
+    .item-title {
+      font-size: 0.85rem;
+    }
+    
+    .badge {
+      padding: 2px 4px;
+      font-size: 0.65rem;
+      min-width: auto;
+    }
+  }
+`;
+
+/* --- HELPER FUNCTIONS --- */
+const getAccuracyColor = (accuracy) => {
+  if (accuracy >= 80) return '#10b981';
+  if (accuracy >= 60) return '#f59e0b';
+  if (accuracy >= 40) return '#f97316';
+  return '#ef4444';
+};
+
+const hexToRgba = (hex, alpha = 0.08) => {
+  if (!hex || typeof hex !== 'string') return `rgba(59, 130, 246, ${alpha})`;
+  const clean = hex.replace('#', '');
+  const bigint = parseInt(clean, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const getHierarchyLevel = (itemName) => {
+  if (!itemName || typeof itemName !== 'string') return 0;
+  const trimmed = itemName.trim();
+  if (trimmed.startsWith('- ') || itemName.startsWith(' - ')) return 1;
+  const numberMatch = trimmed.match(/^(\d+\.)+/);
+  if (numberMatch) {
+    const dots = (numberMatch[0].match(/\./g) || []).length;
+    return dots > 1 ? dots - 1 : 0;
+  }
+  return 0;
+};
+
+const isSubItem = (itemName) => {
+  if (!itemName || typeof itemName !== 'string') return false;
+  return itemName.startsWith(' - ') || itemName.startsWith('- ') || /^\d+\.\d+/.test(itemName.trim());
+};
+
+const calculateNextReviewDate = (accuracy) => {
+  const today = new Date();
+  let daysToAdd = 1;
+  if (accuracy >= 90) daysToAdd = 7;
+  else if (accuracy >= 80) daysToAdd = 5;
+  else if (accuracy >= 70) daysToAdd = 3;
+  else if (accuracy >= 60) daysToAdd = 2;
+  today.setDate(today.getDate() + daysToAdd);
+  return today.toISOString().split('T')[0];
+};
+
+/* --- COMPONENTS --- */
+
+const SyllabusItem = ({ 
+  item, 
+  studySessions, 
+  isEditing, 
+  onEditStart, 
+  onCancelEdit, 
+  onViewDetails, 
+  onSaveAccuracy, 
+  onSaveWeight 
 }) => {
-  const [activeFilters, setActiveFilters] = useState({});
-  const [editingItem, setEditingItem] = useState(null);
-  const [tempAccuracy, setTempAccuracy] = useState('');
-  const [tempWeight, setTempWeight] = useState('');
+  const [tempAccuracy, setTempAccuracy] = useState(item.accuracy?.toString() || '');
+  const [tempWeight, setTempWeight] = useState(item.weight?.toString() || '');
 
-  const getAccuracyColor = (accuracy) => {
-    if (accuracy >= 80) return '#10b981'; // Verde
-    if (accuracy >= 60) return '#f59e0b'; // Amarelo
-    if (accuracy >= 40) return '#f97316'; // Laranja
-    return '#ef4444'; // Vermelho
-  };
+  const hierarchyLevel = getHierarchyLevel(item.name);
+  const isSub = isSubItem(item.name);
 
-  const getWeightColor = (weight) => {
-    const intensity = Math.min(weight / 100, 1);
-    return `rgba(239, 68, 68, ${0.2 + intensity * 0.6})`; // Vermelho com intensidade baseada no peso
-  };
-
-  const calculateNextReviewDate = (accuracy) => {
-    const today = new Date();
-    let daysToAdd = 1;
-
-    if (accuracy >= 90) {
-      daysToAdd = 7; // 1 semana
-    } else if (accuracy >= 80) {
-      daysToAdd = 5; // 5 dias
-    } else if (accuracy >= 70) {
-      daysToAdd = 3; // 3 dias
-    } else if (accuracy >= 60) {
-      daysToAdd = 2; // 2 dias
-    } else {
-      daysToAdd = 1; // 1 dia
-    }
-
-    today.setDate(today.getDate() + daysToAdd);
-    return today.toISOString().split('T')[0];
-  };
-
-  // Calcular percentual de acerto baseado nas sessões
-  const getItemAccuracyFromSessions = (itemId) => {
+  const getSessionAccuracy = () => {
     if (!studySessions) return null;
-
-    const itemSessions = studySessions.filter(session =>
-      session.syllabusItemId === itemId &&
-      session.accuracy !== undefined &&
-      session.accuracy !== null
-    );
-
+    const itemSessions = studySessions.filter(s => s.syllabusItemId === item.id && s.accuracy != null);
     if (itemSessions.length === 0) return null;
-
-    // Usar a média dos percentuais de acerto das sessões
-    const totalAccuracy = itemSessions.reduce((sum, session) => sum + session.accuracy, 0);
-    return Math.round(totalAccuracy / itemSessions.length);
+    return Math.round(itemSessions.reduce((sum, s) => sum + s.accuracy, 0) / itemSessions.length);
   };
 
-  const handleSaveAccuracy = (itemId) => {
-    const accuracy = parseFloat(tempAccuracy);
+  const displayAccuracy = getSessionAccuracy() ?? item.accuracy;
+  const weightColors = item.weight ? {
+    bg: hexToRgba(getAccuracyColor(item.weight), 0.1),
+    text: getAccuracyColor(item.weight)
+  } : null;
 
-    if (accuracy >= 0 && accuracy <= 100) {
-      const nextReviewDate = calculateNextReviewDate(accuracy);
+  return (
+    <>
+      <div 
+        className="syllabus-row"
+        style={{ paddingLeft: `calc(16px + (${hierarchyLevel} * 12px))` }}
+      >
+        <div className="item-content">
+          <span className={`item-title ${isSub ? 'sub' : 'bold'}`}>
+            {item.name}
+          </span>
+        </div>
 
-      const updatedItems = syllabusItems.map(item =>
-        item.id === itemId
-          ? {
-              ...item,
-              accuracy: accuracy,
-              lastAccuracyUpdate: new Date().toISOString(),
-              nextReviewDate: nextReviewDate,
-              isStudied: true
-            }
-          : item
-      );
-      setSyllabusItems(updatedItems);
-      // Salvar no localStorage
-      localStorage.setItem('syllabusItems', JSON.stringify(updatedItems));
+        <div className="item-actions">
+          {displayAccuracy !== undefined && (
+            <div 
+              className="badge" 
+              style={{ backgroundColor: getAccuracyColor(displayAccuracy), color: '#000' }}
+            >
+              {displayAccuracy}%
+            </div>
+          )}
+
+          {item.weight !== undefined && (
+            <div 
+              className="badge"
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#cbd5e1' }}
+            >
+              {item.weight}
+            </div>
+          )}
+
+          <button className="icon-btn" onClick={() => onViewDetails(item)}>
+            <Eye size={16} />
+          </button>
+          <button className="icon-btn" onClick={() => {
+            setTempAccuracy(item.accuracy?.toString() || '');
+            setTempWeight(item.weight?.toString() || '');
+            onEditStart(item.id);
+          }}>
+            <Edit2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      {isEditing && (
+        <div className="edit-mode">
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Editar:</span>
+          <input 
+            className="edit-input" 
+            placeholder="%" 
+            type="number"
+            value={tempAccuracy} 
+            onChange={e => setTempAccuracy(e.target.value)} 
+          />
+          <input 
+            className="edit-input" 
+            placeholder="Peso" 
+            type="number"
+            value={tempWeight} 
+            onChange={e => setTempWeight(e.target.value)} 
+          />
+          <button 
+            className="btn-action success" 
+            style={{padding: '4px 8px', fontSize: '0.75rem'}}
+            onClick={() => onSaveAccuracy(item.id, tempAccuracy)}
+          >
+            OK
+          </button>
+          <button 
+            className="btn-action secondary" 
+            style={{padding: '4px 8px', fontSize: '0.75rem'}}
+            onClick={onCancelEdit}
+          >
+            X
+          </button>
+        </div>
+      )}
+    </>
+  );
+};
+
+const SubjectCard = ({
+  subject,
+  syllabusItems,
+  studySessions,
+  isExpanded,
+  onToggleExpand,
+  // Actions
+  onOpenSession,
+  onOpenSyllabus,
+  onHistory,
+  onEditSubject,
+  onDeleteSubject,
+  // Data
+  getSubjectStudyTime,
+  calculateSubjectProgress,
+  onSaveItemAccuracy,
+  onSaveItemWeight,
+  onViewItemDetails
+}) => {
+  const [activeFilter, setActiveFilter] = useState('todos');
+  const [editingItemId, setEditingItemId] = useState(null);
+
+  const subjectItems = syllabusItems.filter(i => i.subjectId === subject.id);
+  const studiedItems = subjectItems.filter(i => i.isStudied);
+  
+  const filteredItems = (() => {
+    switch (activeFilter) {
+      case 'nao-estudados': return subjectItems.filter(i => !i.isStudied);
+      case 'com-revisao': return subjectItems.filter(i => i.isStudied && i.accuracy >= 0);
+      case 'estudados-sem-revisao': return subjectItems.filter(i => i.isStudied && (i.accuracy === undefined || i.accuracy < 0));
+      default: return subjectItems;
     }
+  })();
 
-    setEditingItem(null);
-    setTempAccuracy('');
-    setTempWeight('');
+  const progress = calculateSubjectProgress ? calculateSubjectProgress(subject.id) : 0;
+  const avgAccuracy = studiedItems.length > 0
+    ? studiedItems.reduce((sum, i) => sum + (i.accuracy || 0), 0) / studiedItems.length
+    : 0;
+  const hours = getSubjectStudyTime(subject.id);
+
+  return (
+    <div className="subject-card">
+      <div className="card-header" onClick={() => onToggleExpand(subject.id)}>
+        <div className="header-main">
+          <div className="header-title-group">
+            <h3 className="header-title">{subject.name}</h3>
+          </div>
+          <div className="header-chevron">
+            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </div>
+        </div>
+
+        <div className="progress-track">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+
+        <div className="stats-row">
+          <div className="stat-pill">Progresso: {progress.toFixed(0)}%</div>
+          <div className="stat-pill">{studiedItems.length}/{subjectItems.length} tópicos</div>
+          <div className="stat-pill">Média: {avgAccuracy.toFixed(0)}%</div>
+          <div className="stat-pill">{hours.toFixed(1)}h</div>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="expanded-content">
+          {/* Actions Toolbar */}
+          <div className="toolbar">
+            <button className="btn-action primary" onClick={(e) => { e.stopPropagation(); onOpenSession(subject.id); }}>
+              <CheckCircle size={16} /> <span>Sessão</span>
+            </button>
+            <button className="btn-action secondary" onClick={(e) => { e.stopPropagation(); onOpenSyllabus(subject); }}>
+              <ListChecks size={16} /> <span>Edital</span>
+            </button>
+            <div style={{flex:1}} />
+            <button className="btn-action ghost" onClick={(e) => { e.stopPropagation(); onHistory(subject); }} title="Histórico">
+              <History size={18} />
+            </button>
+            <button className="btn-action ghost warning" onClick={(e) => { e.stopPropagation(); onEditSubject(subject); }} title="Editar">
+              <Edit size={18} />
+            </button>
+            <button className="btn-action ghost danger" onClick={(e) => { e.stopPropagation(); onDeleteSubject(subject); }} title="Excluir">
+              <Trash2 size={18} />
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="filter-bar">
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'nao-estudados', label: 'A Estudar' },
+              { id: 'com-revisao', label: 'Revisados' },
+              { id: 'estudados-sem-revisao', label: 'Sem Revisão' }
+            ].map(f => (
+              <button 
+                key={f.id}
+                onClick={() => setActiveFilter(f.id)}
+                className={`filter-chip ${activeFilter === f.id ? 'active' : ''}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* List */}
+          <div className="syllabus-container">
+            {filteredItems.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                Nenhum tópico encontrado.
+              </div>
+            ) : (
+              filteredItems.map(item => (
+                <SyllabusItem 
+                  key={item.id}
+                  item={item}
+                  studySessions={studySessions}
+                  isEditing={editingItemId === item.id}
+                  onEditStart={setEditingItemId}
+                  onCancelEdit={() => setEditingItemId(null)}
+                  onViewDetails={onViewItemDetails}
+                  onSaveAccuracy={(id, val) => {
+                    onSaveItemAccuracy(id, val);
+                    setEditingItemId(null);
+                  }}
+                  onSaveWeight={(id, val) => {
+                    onSaveItemWeight(id, val);
+                    setEditingItemId(null);
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const SubjectsOverview = (props) => {
+  const {
+    subjects,
+    syllabusItems,
+    setSyllabusItems,
+    expandedSubjects,
+    setExpandedSubjects,
+    getSubjectStudyTime,
+    setSelectedSyllabusItem,
+    setIsItemDetailsModalOpen,
+    studySessions,
+    setIsSubjectModalOpen,
+    setCurrentSubjectForSession,
+    setIsSessionModalOpen,
+    setCurrentSubjectForSyllabus,
+    setIsSyllabusModalOpen,
+    setEditingSubject,
+    setConfirmationDialog,
+    handleDeleteSubject,
+    calculateSubjectProgress,
+    setIsSessionHistoryModalOpen,
+    setSelectedSubjectForHistory
+  } = props;
+
+  /* Handlers */
+  const handleToggle = (id) => setExpandedSubjects(prev => ({...prev, [id]: !prev[id]}));
+
+  const handleSaveAcc = (id, val) => {
+    const acc = parseFloat(val);
+    if(acc >= 0 && acc <= 100) {
+      const nextDate = calculateNextReviewDate(acc);
+      const updated = syllabusItems.map(i => i.id === id ? { ...i, accuracy: acc, nextReviewDate: nextDate, isStudied: true } : i);
+      setSyllabusItems(updated);
+      localStorage.setItem('syllabusItems', JSON.stringify(updated));
+    }
   };
 
-  const handleSaveWeight = (itemId) => {
-    const weight = parseFloat(tempWeight);
-
-    if (weight >= 0 && weight <= 100) {
-      const updatedItems = syllabusItems.map(item =>
-        item.id === itemId
-          ? {
-              ...item,
-              weight: weight
-            }
-          : item
-      );
-      setSyllabusItems(updatedItems);
-      // Salvar no localStorage
-      localStorage.setItem('syllabusItems', JSON.stringify(updatedItems));
-    }
-
-    setEditingItem(null);
-    setTempAccuracy('');
-    setTempWeight('');
-  };
-
-  const filterItems = (items, subjectId) => {
-    const filter = activeFilters[subjectId] || 'todos';
-
-    switch (filter) {
-      case 'nao-estudados':
-        return items.filter(item => !item.isStudied);
-      case 'com-revisao':
-        return items.filter(item => item.isStudied && item.accuracy >= 0);
-      case 'estudados-sem-revisao':
-        return items.filter(item => item.isStudied && (item.accuracy === undefined || item.accuracy < 0));
-      default:
-        return items;
+  const handleSaveWgt = (id, val) => {
+    const wgt = parseFloat(val);
+    if(wgt >= 0 && wgt <= 100) {
+      const updated = syllabusItems.map(i => i.id === id ? { ...i, weight: wgt } : i);
+      setSyllabusItems(updated);
+      localStorage.setItem('syllabusItems', JSON.stringify(updated));
     }
   };
 
-  // Função para detectar se um item é uma submatéria
-  const isSubItem = (itemName) => {
-    if (!itemName || typeof itemName !== 'string') return false;
-    // Detectar itens que começam com " - " ou números seguidos de ponto (ex: "1.1", "2.3")
-    return itemName.startsWith(' - ') ||
-           itemName.startsWith('- ') ||
-           /^\d+\.\d+/.test(itemName.trim());
-  };
-
-  // Função para detectar nível de hierarquia baseado na numeração
-  const getHierarchyLevel = (itemName) => {
-    if (!itemName || typeof itemName !== 'string') return 0;
-
-    const trimmed = itemName.trim();
-
-    // Detectar itens que começam com " - " ou "- "
-    if (trimmed.startsWith('- ') || itemName.startsWith(' - ')) {
-      return 1;
-    }
-
-    // Detectar numeração (ex: "1.", "1.1", "1.1.1")
-    const numberMatch = trimmed.match(/^(\d+\.)+/);
-    if (numberMatch) {
-      const dots = (numberMatch[0].match(/\./g) || []).length;
-      return dots > 1 ? dots - 1 : 0; // 1. = nível 0, 1.1 = nível 1, 1.1.1 = nível 2
-    }
-
-    return 0;
+  const handleDeleteClick = (subject) => {
+    setConfirmationDialog({
+      isOpen: true,
+      title: 'Excluir Matéria',
+      message: `Deseja excluir "${subject.name}" e todo o seu progresso?`,
+      onConfirm: () => {
+        handleDeleteSubject(subject.id);
+        setConfirmationDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+      }
+    });
   };
 
   return (
-    <div className="subjects-overview-new">
-      {subjects.map(subject => {
-        const subjectSyllabusItems = syllabusItems.filter(item => item.subjectId === subject.id);
-        const filteredItems = filterItems(subjectSyllabusItems, subject.id);
-        const studiedItems = subjectSyllabusItems.filter(item => item.isStudied);
-        const studiedPercentage = subjectSyllabusItems.length > 0
-          ? (studiedItems.length / subjectSyllabusItems.length) * 100
-          : 0;
-        const totalStudyTime = getSubjectStudyTime(subject.id);
-        const averageAccuracy = studiedItems.length > 0
-          ? studiedItems.reduce((sum, item) => sum + (item.accuracy || 0), 0) / studiedItems.length
-          : 0;
-        const isExpanded = expandedSubjects[subject.id];
-
-        return (
-          <div key={subject.id} className="subject-overview-new">
-            <div className="subject-header-new">
-              <div className="subject-info">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <h3 className="subject-name" style={{ margin: 0 }}>{subject.name}</h3>
-                  <button
-                    className="expand-btn"
-                    onClick={() => {
-                      const newExpanded = { ...expandedSubjects };
-                      newExpanded[subject.id] = !newExpanded[subject.id];
-                      setExpandedSubjects(newExpanded);
-                    }}
-                  >
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                </div>
-
-                {isExpanded && (
-                  <>
-                    <div className="subject-stats-compact" style={{
-                      marginBottom: '6px',
-                      fontSize: '0.7rem',
-                      color: '#64748b',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '6px',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%'
-                    }}>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        {studiedItems.length} de {subjectSyllabusItems.length} itens ({studiedPercentage.toFixed(0)}%)
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        Média: {averageAccuracy.toFixed(0)}%
-                      </span>
-                      <span style={{
-                        background: '#f1f5f9',
-                        padding: '2px 6px',
-                        borderRadius: '3px',
-                        fontWeight: '500',
-                        fontSize: '0.65rem'
-                      }}>
-                        {totalStudyTime.toFixed(1)}h estudadas
-                      </span>
-                    </div>
-
-                    <div className="subject-controls" style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: '4px',
-                      marginBottom: '6px'
-                    }}>
-                      <div className="filter-tabs" style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
-                        <button
-                          className={`filter-tab ${(!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'todos' }))}
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? '#3b82f6' : '#e2e8f0',
-                            color: (!activeFilters[subject.id] || activeFilters[subject.id] === 'todos') ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Todos
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'nao-estudados' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'nao-estudados' }))}
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'nao-estudados' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'nao-estudados' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Não Estudados
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'com-revisao' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'com-revisao' }))}
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'com-revisao' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'com-revisao' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Com Revisão
-                        </button>
-                        <button
-                          className={`filter-tab ${activeFilters[subject.id] === 'estudados-sem-revisao' ? 'active' : ''}`}
-                          onClick={() => setActiveFilters(prev => ({ ...prev, [subject.id]: 'estudados-sem-revisao' }))}
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: activeFilters[subject.id] === 'estudados-sem-revisao' ? '#3b82f6' : '#e2e8f0',
-                            color: activeFilters[subject.id] === 'estudados-sem-revisao' ? 'white' : '#64748b',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                          }}
-                        >
-                          Estudados ({studiedPercentage.toFixed(0)}% Rev.)
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {isExpanded && (
-              <div className="subject-content-new">
-                {filteredItems.length === 0 ? (
-                  <div className="no-items">
-                    Nenhum item corresponde ao filtro selecionado.
-                  </div>
-                ) : (
-                  <div className="syllabus-items-list">
-                    {filteredItems.map(item => {
-                      const hierarchyLevel = getHierarchyLevel(item.name);
-                      const isSubItemFlag = isSubItem(item.name);
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="syllabus-item-row"
-                          style={{
-                            backgroundColor: item.weight ? getWeightColor(item.weight) : undefined,
-                            marginLeft: `${hierarchyLevel * 20}px`, // Recuo de 20px por nível
-                            borderLeft: isSubItemFlag ? '3px solid rgba(59, 130, 246, 0.3)' : 'none',
-                            paddingLeft: isSubItemFlag ? '12px' : '8px'
-                          }}
-                        >
-                          <div className="item-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                              <span
-                                className="item-name"
-                                style={{
-                                  fontSize: isSubItemFlag ? '0.85rem' : '0.9rem',
-                                  fontWeight: isSubItemFlag ? '400' : '500',
-                                  color: isSubItemFlag ? '#94a3b8' : '#e2e8f0'
-                                }}
-                              >
-                                {item.name}
-                              </span>
-                            </div>
-
-                            {/* Fixed indicators on the right */}
-                            <div className="item-indicators" style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '8px',
-                              position: 'relative',
-                              flexShrink: 0 
-                            }}>
-                              {(() => {
-                                // Priorizar percentual de acerto das sessões, depois o manual
-                                const sessionAccuracy = getItemAccuracyFromSessions(item.id);
-                                const displayAccuracy = sessionAccuracy !== null ? sessionAccuracy : item.accuracy;
-
-                                return displayAccuracy !== undefined && (
-                                  <div
-                                    className="accuracy-badge"
-                                    style={{
-                                      backgroundColor: getAccuracyColor(displayAccuracy),
-                                      color: 'white',
-                                      padding: '3px 8px',
-                                      borderRadius: '6px',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 'bold',
-                                      minWidth: '35px',
-                                      textAlign: 'center'
-                                    }}
-                                    title={sessionAccuracy !== null ? 'Baseado nas sessões de estudo' : 'Definido manualmente'}
-                                  >
-                                    {displayAccuracy}%
-                                  </div>
-                                );
-                              })()}
-
-                              {item.weight !== undefined && (
-                                <div
-                                  className="weight-badge"
-                                  style={{
-                                    backgroundColor: getWeightColor(item.weight),
-                                    color: '#333',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 'bold',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                    minWidth: '35px',
-                                    textAlign: 'center'
-                                  }}
-                                  title="Peso da questão"
-                                >
-                                  {item.weight}%
-                                </div>
-                              )}
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <button
-                                  className="details-btn"
-                                  onClick={() => {
-                                    setSelectedSyllabusItem(item);
-                                    setIsItemDetailsModalOpen(true);
-                                  }}
-                                  title="Histórico de Item"
-                                >
-                                  <Eye size={12} />
-                                </button>
-
-                                <button
-                                  className="details-btn"
-                                  onClick={() => {
-                                    setEditingItem(item.id);
-                                    setTempAccuracy(item.accuracy?.toString() || '');
-                                    setTempWeight(item.weight?.toString() || '');
-                                  }}
-                                  title="Editar % Acerto e Peso"
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                        {editingItem === item.id && (
-                          <div className="edit-controls" style={{
-                            marginTop: '8px',
-                            padding: '8px',
-                            background: 'rgba(15, 23, 42, 0.8)',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems: 'center',
-                            flexWrap: 'wrap'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <label style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>% Acerto:</label>
-                              <input
-                                type="number"
-                                value={tempAccuracy}
-                                onChange={(e) => setTempAccuracy(e.target.value)}
-                                className="accuracy-input"
-                                style={{ width: '60px' }}
-                                min="0"
-                                max="100"
-                                placeholder="0-100"
-                              />
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <label style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>% Peso:</label>
-                              <input
-                                type="number"
-                                value={tempWeight}
-                                onChange={(e) => setTempWeight(e.target.value)}
-                                className="accuracy-input"
-                                style={{ width: '60px' }}
-                                min="0"
-                                max="100"
-                                placeholder="0-100"
-                              />
-                            </div>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => handleSaveAccuracy(item.id)}
-                              style={{ fontSize: '0.7rem', padding: '4px 8px' }}
-                              disabled={!tempAccuracy}
-                            >
-                              Salvar %
-                            </button>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => handleSaveWeight(item.id)}
-                              style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#059669' }}
-                              disabled={!tempWeight}
-                            >
-                              Salvar Peso
-                            </button>
-
-                            <button
-                              className="save-btn"
-                              onClick={() => {
-                                setEditingItem(null);
-                                setTempAccuracy('');
-                                setTempWeight('');
-                              }}
-                              style={{
-                                fontSize: '0.7rem',
-                                padding: '4px 8px',
-                                background: '#6b7280'
-                              }}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div className="subjects-container">
+      <style>{STYLES}</style>
+      {subjects.map(subject => (
+        <SubjectCard 
+          key={subject.id}
+          subject={subject}
+          syllabusItems={syllabusItems}
+          studySessions={studySessions}
+          isExpanded={expandedSubjects[subject.id]}
+          onToggleExpand={handleToggle}
+          // Actions
+          onOpenSession={(id) => { setCurrentSubjectForSession(id); setIsSessionModalOpen(true); }}
+          onOpenSyllabus={(subj) => { setCurrentSubjectForSyllabus(subj); setIsSyllabusModalOpen(true); }}
+          onHistory={(subj) => { setSelectedSubjectForHistory(subj); setIsSessionHistoryModalOpen(true); }}
+          onEditSubject={(subj) => { setEditingSubject(subj); setIsSubjectModalOpen(true); }}
+          onDeleteSubject={handleDeleteClick}
+          // Data Helpers
+          getSubjectStudyTime={getSubjectStudyTime}
+          calculateSubjectProgress={calculateSubjectProgress}
+          onSaveItemAccuracy={handleSaveAcc}
+          onSaveItemWeight={handleSaveWgt}
+          onViewItemDetails={(item) => { setSelectedSyllabusItem(item); setIsItemDetailsModalOpen(true); }}
+        />
+      ))}
     </div>
   );
 };
