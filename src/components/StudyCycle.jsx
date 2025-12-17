@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap } from "lucide-react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap, CheckCircle2 } from "lucide-react";
 import {
   buildSubjectsForCycle,
   generateCycleBatch,
@@ -29,16 +29,25 @@ const clampNumber = (value, min, max) => {
   return Math.min(max, Math.max(min, num));
 };
 
+const normalizeId = (value) => {
+  if (value == null) return null;
+  const str = String(value).trim();
+  return str ? str : null;
+};
+
 const buildDonutData = (subjects) => {
   const total = subjects.reduce((sum, s) => sum + (Number(s.weight) || 0), 0);
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
+  const tau = 2 * Math.PI;
   let offset = 0;
 
   const segments = subjects.map((s) => {
     const weight = Number(s.weight) || 0;
     const fraction = total > 0 ? weight / total : 0;
     const length = fraction * circumference;
+    const startAngle = total > 0 ? (offset / circumference) * tau : 0;
+    const endAngle = total > 0 ? ((offset + length) / circumference) * tau : 0;
     const seg = {
       id: s.id,
       name: s.name,
@@ -46,6 +55,8 @@ const buildDonutData = (subjects) => {
       weightLabel: weight.toFixed(1),
       dashArray: `${length} ${Math.max(0, circumference - length)}`,
       dashOffset: -offset,
+      startAngle,
+      endAngle,
     };
     offset += length;
     return seg;
@@ -61,6 +72,7 @@ export const StudyCycle = ({
   onSaveConfig,
   onStartSession,
   onMarkTopicStudied,
+  advanceNonce,
 }) => {
   const configKey = `studyCycle:${profileId}`;
   const modeKey = `studyCycleWeightsMode:${profileId}`;
@@ -77,8 +89,17 @@ export const StudyCycle = ({
   // Persistent Queue State
   const [queue, setQueue] = useState([]);
 
+  // Ref to ensure we only load config ONCE per profile change
+  const loadedProfileRef = useRef(null);
+
   useEffect(() => {
     if (!profileId) return;
+
+    // Prevent re-running initialization if subjects change but profile matches
+    if (loadedProfileRef.current === profileId) {
+      return;
+    }
+    loadedProfileRef.current = profileId;
 
     const readStorage = (key) => {
       const raw = localStorage.getItem(key);
@@ -113,11 +134,12 @@ export const StudyCycle = ({
           : 12,
       );
 
-      setSelectedSubjectId(
-        typeof savedSelected === "string" && savedSelected
-          ? savedSelected
-          : null,
-      );
+      const normalizedSelected =
+        (typeof savedSelected === "string" || typeof savedSelected === "number") &&
+        savedSelected
+          ? String(savedSelected)
+          : null;
+      setSelectedSubjectId(normalizedSelected);
 
       if (Array.isArray(savedQueue)) {
         setQueue(savedQueue);
@@ -143,9 +165,9 @@ export const StudyCycle = ({
     }));
   }, [subjects, cycleConfig, weightMode]);
 
-  const activeSubjects = subjectsForCycle.filter(
+  const activeSubjects = useMemo(() => subjectsForCycle.filter(
     (s) => s.include && s.weight > 0,
-  );
+  ), [subjectsForCycle]);
 
   // Queue Validation, Sync, and Replenishment Effect
   useEffect(() => {
@@ -197,39 +219,91 @@ export const StudyCycle = ({
       }
       return prevQueue;
     });
-  }, [activeSubjects, slots, queueKey]);
+    // Add queue.length to ensure we replenish when queue drains
+  }, [activeSubjects, slots, queueKey, queue.length]);
+
+  // 1. Persistence: Save selection whenever it changes
+  useEffect(() => {
+    const id = normalizeId(selectedSubjectId);
+    if (!id) return;
+    localStorage.setItem(selectedKey, JSON.stringify(id));
+  }, [selectedSubjectId, selectedKey]);
+
+  // 2. Smart Selection Logic (Init + Deletion Guard)
+  // Ensures we auto-select something on load, and handle deletions gracefully,
+  // without fighting the user's manual selection.
+  const hasInitialCheckRef = useRef(false);
 
   useEffect(() => {
-    const isSelectedActive =
-      selectedSubjectId &&
-      activeSubjects.some((s) => s.id === selectedSubjectId);
+    // Wait for subjects to load
+    if (activeSubjects.length === 0) return;
 
-    // If current selection is invalid, or null, try to conform to queue or first available
-    if (!isSelectedActive) {
-      // Don't auto-consume queue here, just peek or pick available
-      // Actually, if we pick from queue[0], we should probably consume it?
-      // But if user just switched profile, we don't want to auto-complete a session.
-      // Just set selected to queue[0] WITHOUT removing it? 
-      // This usually means "Next Up".
-      const first = queue[0]?.id || activeSubjects[0]?.id || null;
-      setSelectedSubjectId(first);
-      if (first) localStorage.setItem(selectedKey, first);
-    } else {
-      localStorage.setItem(selectedKey, selectedSubjectId);
+    const currentId = normalizeId(selectedSubjectId);
+    const isValid = currentId && activeSubjects.some((s) => s.id === currentId);
+
+    // A. Initial Check (Run Once per Profile Load)
+    if (!hasInitialCheckRef.current) {
+      if (!isValid) {
+        const first = queue[0]?.id || activeSubjects[0]?.id;
+        if (first) setSelectedSubjectId(first);
+      }
+      hasInitialCheckRef.current = true;
+      return;
     }
-  }, [selectedSubjectId, activeSubjects, selectedKey, queue]);
 
+    // B. Deletion Guard (Runtime)
+    // Only intervene if the CURRENT selection is strictly INVALID (Deleted/Disabled)
+    // We trust manual selections (which update selectedSubjectId) unless the subject itself disappears.
+    if (currentId && !isValid) {
+      // It's gone! Pick new.
+      const first = queue[0]?.id || activeSubjects[0]?.id;
+      setSelectedSubjectId(first || null);
+    }
+
+    // C. Empty State Recovery
+    // If we have no selection but we have candidates, auto-select.
+    if (!currentId && queue.length > 0) {
+      setSelectedSubjectId(queue[0].id);
+    }
+
+  }, [activeSubjects, queue, selectedSubjectId]); // depend on ID to catch invalid states immediately
+
+  const normalizedSelectedSubjectId = normalizeId(selectedSubjectId);
   const selectedSubject =
-    activeSubjects.find((s) => s.id === selectedSubjectId) || null;
+    (normalizedSelectedSubjectId &&
+      activeSubjects.find((s) => s.id === normalizedSelectedSubjectId)) ||
+    null;
   const nextTopic = selectedSubject
     ? pickNextTopicForSubject(syllabusItems, selectedSubject.id)
     : null;
   const hasActionTarget = Boolean(selectedSubject && nextTopic);
 
-  const donutData = useMemo(
-    () => buildDonutData(activeSubjects),
-    [activeSubjects],
-  );
+  const donutData = useMemo(() => buildDonutData(activeSubjects), [activeSubjects]);
+  const lastAdvanceNonceRef = useRef(advanceNonce);
+
+  const nextSubject = useMemo(() => {
+    const segments = donutData.segments;
+    if (segments.length === 0) return null;
+
+    const currentId = normalizedSelectedSubjectId;
+    const currentIndex = currentId
+      ? segments.findIndex((seg) => seg.id === currentId)
+      : -1;
+    const nextIndex =
+      (currentIndex >= 0 ? currentIndex + 1 : 0) % segments.length;
+
+    return segments[nextIndex] || null;
+  }, [donutData.segments, normalizedSelectedSubjectId]);
+
+  useEffect(() => {
+    if (advanceNonce == null) return;
+    if (advanceNonce === lastAdvanceNonceRef.current) return;
+    lastAdvanceNonceRef.current = advanceNonce;
+
+    if (donutData.segments.length < 2) return;
+    if (!nextSubject?.id) return;
+    setSelectedSubjectId(nextSubject.id);
+  }, [advanceNonce, donutData.segments.length, nextSubject?.id]);
 
   const handleWeightChange = (id, value) => {
     if (weightMode === "edital") return;
@@ -240,8 +314,6 @@ export const StudyCycle = ({
       onSaveConfig?.(next);
       return next;
     });
-    // Weights changed, we might want to refresh queue eventually, 
-    // but letting it drain is smoother to avoid jarring jumps.
   };
 
   const handleIncludeToggle = (id) => {
@@ -285,16 +357,56 @@ export const StudyCycle = ({
   };
 
   const handlePickNextFromQueue = () => {
-    const next = queue[0];
-    if (!next) return;
+    if (!nextSubject?.id) return;
+    setSelectedSubjectId(nextSubject.id);
+  };
 
-    // Consume the item
-    const newQueue = queue.slice(1);
-    setQueue(newQueue);
-    localStorage.setItem(queueKey, JSON.stringify(newQueue));
+  const handleDonutClick = (e) => {
+    const segments = donutData.segments;
+    if (!Array.isArray(segments) || segments.length === 0) return;
 
-    setSelectedSubjectId(next.id);
-    localStorage.setItem(selectedKey, next.id);
+    const svg = e.currentTarget;
+    if (!svg?.createSVGPoint) return;
+
+    const ctm = svg.getScreenCTM?.();
+    if (!ctm) return;
+
+    const point = svg.createSVGPoint();
+    point.x = e.clientX;
+    point.y = e.clientY;
+
+    const local = point.matrixTransform(ctm.inverse());
+    const dx = local.x - 60;
+    const dy = local.y - 60;
+    const r = Math.sqrt(dx * dx + dy * dy);
+
+    // Only respond to clicks on the ring (avoid accidental picks)
+    const maxStrokeWidth = 18;
+    const tolerance = 2;
+    const innerRadius = donutData.radius - maxStrokeWidth / 2 - tolerance;
+    const outerRadius = donutData.radius + maxStrokeWidth / 2 + tolerance;
+    if (r < innerRadius || r > outerRadius) return;
+
+    // Angle: 0 at top, clockwise (matches the -90° rotation used for drawing)
+    const tau = 2 * Math.PI;
+    const angleFromX = Math.atan2(dy, dx);
+    const normalized = (angleFromX + tau) % tau;
+    const angleFromTop = (normalized + Math.PI / 2) % tau;
+
+    const picked =
+      segments.find((seg) => angleFromTop >= seg.startAngle && angleFromTop < seg.endAngle) ||
+      segments[segments.length - 1];
+
+    if (picked?.id) handleSelectSubject(picked.id);
+  };
+
+  const handleSelectSubject = (nextIdRaw) => {
+    const nextId = normalizeId(nextIdRaw);
+    if (!nextId) return;
+
+    const currentId = normalizeId(selectedSubjectId);
+    if (currentId === nextId) return;
+    setSelectedSubjectId(nextId);
   };
 
   const handleEqualize = () => {
@@ -335,7 +447,7 @@ export const StudyCycle = ({
 
   return (
     <div className="ui-card study-cycle">
-      <div className="cycle-head">
+      <div className="cycle-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p className="cycle-eyebrow">Ciclo de estudos</p>
           <h3 className="cycle-title">Próxima sessão</h3>
@@ -360,7 +472,7 @@ export const StudyCycle = ({
       ) : (
         <div className="cycle-body">
           <div className="cycle-pane cycle-pane--primary">
-            {donutData.total === 0 ? (
+            {activeSubjects.length === 0 ? (
               <div className="cycle-empty cycle-empty--stack">
                 <p className="cycle-muted">
                   {weightMode === "edital"
@@ -385,6 +497,7 @@ export const StudyCycle = ({
                     className="cycle-donut__svg"
                     viewBox="0 0 120 120"
                     aria-hidden="true"
+                    onClick={handleDonutClick}
                   >
                     <circle
                       cx="60"
@@ -398,24 +511,23 @@ export const StudyCycle = ({
                       {donutData.segments.map((seg) => (
                         <circle
                           key={seg.id}
-                          className={`cycle-donut__seg ${seg.id === selectedSubjectId ? "is-selected" : ""}`}
+                          className={`cycle-donut__seg ${seg.id === normalizedSelectedSubjectId ? "is-selected" : ""}`}
                           cx="60"
                           cy="60"
                           r={donutData.radius}
                           fill="transparent"
                           stroke={seg.color}
-                          strokeWidth={seg.id === selectedSubjectId ? 18 : 16}
+                          strokeWidth={seg.id === normalizedSelectedSubjectId ? 18 : 16}
                           strokeDasharray={seg.dashArray}
                           strokeDashoffset={seg.dashOffset}
                           strokeLinecap="butt"
                           role="button"
                           tabIndex={0}
                           aria-label={`Selecionar ${seg.name}`}
-                          onClick={() => setSelectedSubjectId(seg.id)}
                           onKeyDown={(e) => {
                             if (e.key !== "Enter" && e.key !== " ") return;
                             e.preventDefault();
-                            setSelectedSubjectId(seg.id);
+                            handleSelectSubject(seg.id);
                           }}
                         >
                           <title>{`${seg.name} (${seg.weightLabel})`}</title>
@@ -425,12 +537,11 @@ export const StudyCycle = ({
                   </svg>
 
                   <div className="cycle-donut__center">
-                    <span className="cycle-muted text-xs">Próxima sessão</span>
                     <div className="cycle-next-title">
                       {selectedSubject?.name || "-"}
                     </div>
                     <span className="cycle-muted text-xs">
-                      Depois: {queue[0]?.name || "-"}
+                      Depois: {nextSubject?.name || "-"}
                     </span>
                   </div>
                 </div>
@@ -438,39 +549,57 @@ export const StudyCycle = ({
                 <div className="cycle-wheel__side">
                   <div className="cycle-select-row">
                     <div className="cycle-select__meta">
+                      {/* Integrated Select List (No Redundant Label) */}
                       <div>
                         <span className="cycle-muted text-xs">Matéria</span>
-                        <div className="cycle-next-title">
-                          {selectedSubject?.name || "-"}
-                        </div>
+                        <select
+                          className="cycle-select-dropdown"
+                          value={selectedSubjectId || ""}
+                          onChange={(e) => handleSelectSubject(e.target.value)}
+                          aria-label="Selecionar matéria para o ciclo"
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            background: '#1e293b',
+                            color: '#fff',
+                            border: '1px solid #334155',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            marginTop: '2px',
+                            fontWeight: 600
+                          }}
+                        >
+                          {activeSubjects.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+
+                      {/* Topic Suggestion with Green Dot */}
                       <div>
                         <span className="cycle-muted text-xs">
                           Tópico sugerido
                         </span>
-                        <div className="cycle-next-title">
+                        <div className="cycle-next-title flex items-center gap-2">
                           {nextTopic?.name || "Cadastre tópicos"}
+                          {nextTopic?.isStudied && (
+                            <CheckCircle2
+                              size={16}
+                              className="text-emerald-500 flex-shrink-0"
+                              aria-label="Tópico já estudado (Revisão)"
+                            />
+                          )}
                         </div>
                       </div>
                       <div>
                         <span className="cycle-muted text-xs">Depois</span>
                         <div className="cycle-next-title">
-                          {queue[0]?.name || "-"}
+                          {nextSubject?.name || "-"}
                         </div>
                       </div>
                     </div>
-
-                    <select
-                      value={selectedSubjectId || ""}
-                      onChange={(e) => setSelectedSubjectId(e.target.value)}
-                      aria-label="Selecionar matéria para o ciclo"
-                    >
-                      {activeSubjects.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
 
                     <div className="cycle-actions">
                       <button
@@ -490,7 +619,7 @@ export const StudyCycle = ({
                       <button
                         className="ui-btn ui-btn-secondary"
                         onClick={handlePickNextFromQueue}
-                        disabled={!queue[0]?.id}
+                        disabled={donutData.segments.length < 2}
                       >
                         <Zap size={16} /> Próximo do ciclo
                       </button>

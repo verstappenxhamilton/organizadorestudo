@@ -131,11 +131,20 @@ export const useStudyData = (showToast) => {
         setStudySessions(newSessions);
         saveToLocalStorage("sessions", newSessions);
 
-        if (markTopicStudied && sessionData.syllabusItemId) {
+        // Handle Syllabus Item Updates (Mark Studied OR Next Review Date)
+        if (sessionData.syllabusItemId) {
             setSyllabusItems((prev) => {
-                const updated = prev.map((i) =>
-                    i.id === sessionData.syllabusItemId ? { ...i, isStudied: true } : i,
-                );
+                const updated = prev.map((i) => {
+                    if (i.id !== sessionData.syllabusItemId) return i;
+
+                    const updates = {};
+                    if (markTopicStudied) updates.isStudied = true;
+                    if (sessionData.nextReviewDate) updates.nextReviewDate = sessionData.nextReviewDate;
+
+                    return Object.keys(updates).length > 0 ? { ...i, ...updates } : i;
+                });
+
+                // Only save if changed (optimization, but map always returns new array so simple save)
                 saveToLocalStorage("syllabusItems", updated);
                 return updated;
             });

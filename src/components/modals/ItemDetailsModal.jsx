@@ -15,6 +15,7 @@ export const ItemDetailsModal = ({
     const itemSessions = studySessions.filter(session =>
         session.syllabusItemId === selectedItem.id
     );
+    const studyOnlySessions = itemSessions.filter((session) => (session.duration || 0) > 0);
 
     const statsContainerStyle = {
         marginBottom: '24px'
@@ -68,18 +69,18 @@ export const ItemDetailsModal = ({
                             Histórico de Estudos:
                         </h3>
 
-                        {itemSessions.length === 0 ? (
+                        {studyOnlySessions.length === 0 ? (
                             <div style={emptyStateStyle}>
                                 Nenhuma sessão de estudo registrada para este item.
                             </div>
                         ) : (
                             <div style={listContainerStyle}>
-                                {itemSessions.map(session => (
+                                {studyOnlySessions.map(session => (
                                     <div
                                         key={session.id}
                                         style={listItemStyle}
                                     >
-                                        Estudado em {new Date(session.date).toLocaleDateString('pt-BR')} ({(session.duration / 60).toFixed(1)}h)
+                                        Estudado em {new Date(session.date).toLocaleDateString('pt-BR')} ({((session.duration || 0) / 60).toFixed(1)}h)
                                     </div>
                                 ))}
                             </div>
@@ -92,14 +93,14 @@ export const ItemDetailsModal = ({
                             Histórico de Acertos:
                         </h3>
 
-                        {itemSessions.filter(s => s.accuracy !== undefined).length === 0 ? (
+                        {itemSessions.filter((s) => Number.isFinite(s.accuracy)).length === 0 ? (
                             <div style={emptyStateStyle}>
                                 Nenhum registro de acertos para este item.
                             </div>
                         ) : (
                             <div style={listContainerStyle}>
                                 {itemSessions
-                                    .filter(session => session.accuracy !== undefined)
+                                    .filter((session) => Number.isFinite(session.accuracy))
                                     .map(session => (
                                         <div
                                             key={session.id}

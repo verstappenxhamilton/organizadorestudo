@@ -9,6 +9,8 @@ import {
   History,
   Edit,
   Trash2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { saveToLocalStorage } from "../utils/localStorage";
 
@@ -435,6 +437,17 @@ const getAccuracyColor = (accuracy) => {
   return "#ef4444";
 };
 
+const getRelativeColor = (value, max) => {
+  if (!max || max === 0) return "#94a3b8"; // Gray if no max
+  const ratio = value / max;
+
+  if (ratio >= 0.9) return "#10b981"; // Top 10% -> Emerald (Green)
+  if (ratio >= 0.7) return "#34d399"; // High -> Light Green
+  if (ratio >= 0.5) return "#facc15"; // Mid -> Yellow
+  if (ratio >= 0.3) return "#fb923c"; // Low-Mid -> Orange
+  return "#ef4444"; // Low -> Red
+};
+
 const hexToRgba = (hex, alpha = 0.08) => {
   if (!hex || typeof hex !== "string") return `rgba(59, 130, 246, ${alpha})`;
   const clean = hex.replace("#", "");
@@ -489,6 +502,8 @@ const SyllabusItem = React.memo(({
   onSaveAccuracy,
   onSaveWeight,
   onSaveAccAndWeight,
+  onToggleStudied,
+  maxWeightForSubject, // New prop
 }) => {
   const [tempAccuracy, setTempAccuracy] = useState(
     item.accuracy?.toString() || "",
@@ -500,7 +515,8 @@ const SyllabusItem = React.memo(({
   const isStudied = Boolean(item.isStudied);
   const weightValue = Number(item.weight);
   const hasWeight = !Number.isNaN(weightValue);
-  const weightColor = hasWeight ? getAccuracyColor(weightValue) : null;
+  // Use relative color
+  const weightColor = hasWeight ? getRelativeColor(weightValue, maxWeightForSubject) : null;
   const weightStyles = hasWeight
     ? {
       background: `linear-gradient(90deg, ${hexToRgba(weightColor, 0.18)} 0%, rgba(15,23,42,0.6) 60%)`,
@@ -510,22 +526,23 @@ const SyllabusItem = React.memo(({
     : {};
 
   const getSessionAccuracy = () => {
-    if (!studySessions) return null;
+    if (!Array.isArray(studySessions)) return undefined;
     const itemSessions = studySessions.filter(
-      (s) => s.syllabusItemId === item.id && s.accuracy != null,
+      (s) => s.syllabusItemId === item.id && Number.isFinite(s.accuracy),
     );
-    if (itemSessions.length === 0) return null;
+    if (itemSessions.length === 0) return undefined;
     return Math.round(
       itemSessions.reduce((sum, s) => sum + s.accuracy, 0) /
       itemSessions.length,
     );
   };
 
-  const displayAccuracy = getSessionAccuracy() ?? item.accuracy;
+  const displayAccuracy = item.accuracy ?? getSessionAccuracy();
+  // Use relative color for text badge too
   const weightColors = item.weight
     ? {
-      bg: hexToRgba(getAccuracyColor(item.weight), 0.1),
-      text: getAccuracyColor(item.weight),
+      bg: hexToRgba(getRelativeColor(item.weight, maxWeightForSubject), 0.1),
+      text: getRelativeColor(item.weight, maxWeightForSubject),
     }
     : null;
 
@@ -629,6 +646,19 @@ const SyllabusItem = React.memo(({
           >
             Salvar
           </button>
+
+          <button
+            className={`btn-action ${isStudied ? "success" : "secondary"}`}
+            style={{ padding: "4px", fontSize: "0.75rem", display: "flex", alignItems: "center" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleStudied) onToggleStudied(item.id);
+            }}
+            title={isStudied ? "Marcar como não estudado" : "Marcar como estudado"}
+          >
+            {isStudied ? <CheckSquare size={16} /> : <Square size={16} />}
+          </button>
+
           <button
             className="btn-action secondary"
             style={{ padding: "4px 8px", fontSize: "0.75rem" }}
@@ -661,12 +691,16 @@ const SubjectCard = React.memo(({
   onSaveItemWeight,
   onSaveAccAndWeight,
   onViewItemDetails,
+  onToggleStudied,
 }) => {
   const [activeFilter, setActiveFilter] = useState("todos");
   const [editingItemId, setEditingItemId] = useState(null);
 
   const subjectItems = syllabusItems.filter((i) => i.subjectId === subject.id);
   const studiedItems = subjectItems.filter((i) => i.isStudied);
+
+  // Calculate Max Weight for this Subject
+  const maxWeight = Math.max(...subjectItems.map(i => Number(i.weight) || 0), 1); // Avoid div by zero
 
   const filteredItems = (() => {
     switch (activeFilter) {
@@ -818,6 +852,8 @@ const SubjectCard = React.memo(({
                   onSaveAccuracy={onSaveItemAccuracy}
                   onSaveWeight={onSaveItemWeight}
                   onSaveAccAndWeight={onSaveAccAndWeight}
+                  onToggleStudied={onToggleStudied}
+                  maxWeightForSubject={maxWeight}
                 />
               ))
             )}
@@ -850,11 +886,31 @@ export const SubjectsOverview = (props) => {
     calculateSubjectProgress,
     setIsSessionHistoryModalOpen,
     setSelectedSubjectForHistory,
+    addOrUpdateSession,
+    onToggleStudied,
   } = props;
 
   /* Handlers */
   const handleToggle = (id) =>
     setExpandedSubjects((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const recordAccuracyHistory = (syllabusItemId, accuracy, nextReviewDate) => {
+    if (!addOrUpdateSession) return;
+    if (!Number.isFinite(accuracy)) return;
+
+    const item = syllabusItems.find((i) => i.id === syllabusItemId);
+    if (!item?.subjectId) return;
+
+    addOrUpdateSession({
+      subjectId: item.subjectId,
+      date: new Date().toISOString().split("T")[0],
+      duration: 0,
+      syllabusItemId,
+      accuracy,
+      nextReviewDate,
+      notes: "Acerto registrado (edição do tópico)",
+    });
+  };
 
   const handleSaveAcc = (id, val) => {
     const acc = parseFloat(val);
@@ -869,6 +925,7 @@ export const SubjectsOverview = (props) => {
         saveToLocalStorage("syllabusItems", updated);
         return updated;
       });
+      recordAccuracyHistory(id, acc, nextDate);
     }
   };
 
@@ -893,13 +950,15 @@ export const SubjectsOverview = (props) => {
 
     if (!validAcc && !validWgt) return;
 
+    const nextDate = validAcc ? calculateNextReviewDate(acc) : null;
+
     setSyllabusItems((prev) => {
       const updated = prev.map((i) => {
         if (i.id !== id) return i;
         const next = { ...i };
         if (validAcc) {
           next.accuracy = acc;
-          next.nextReviewDate = calculateNextReviewDate(acc);
+          next.nextReviewDate = nextDate;
           next.isStudied = true;
         }
         if (validWgt) {
@@ -910,6 +969,10 @@ export const SubjectsOverview = (props) => {
       saveToLocalStorage("syllabusItems", updated);
       return updated;
     });
+
+    if (validAcc) {
+      recordAccuracyHistory(id, acc, nextDate);
+    }
   };
 
   const handleDeleteClick = (subject) => {
@@ -963,6 +1026,8 @@ export const SubjectsOverview = (props) => {
           calculateSubjectProgress={calculateSubjectProgress}
           onSaveItemAccuracy={handleSaveAcc}
           onSaveItemWeight={handleSaveWgt}
+          onSaveAccAndWeight={handleSaveAccAndWeight}
+          onToggleStudied={onToggleStudied}
           onViewItemDetails={(item) => {
             setSelectedSyllabusItem(item);
             setIsItemDetailsModalOpen(true);

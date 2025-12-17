@@ -203,8 +203,12 @@ export const SessionModal = ({
               >
                 <option value="">Selecione um tópico</option>
                 {relevantSyllabusItems.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
+                  <option
+                    key={item.id}
+                    value={item.id}
+                    style={item.isStudied ? { color: '#10b981', fontWeight: 'bold' } : {}}
+                  >
+                    {item.name} {item.isStudied ? '✓' : ''}
                   </option>
                 ))}
               </select>
@@ -290,10 +294,9 @@ export const SessionModal = ({
                     }}
                     className={`
                       px-3 py-1 rounded-full text-xs font-medium border transition-colors
-                      ${
-                        formData.reviewDays === days
-                          ? "bg-indigo-600 border-indigo-500 text-white"
-                          : "bg-slate-800 border-slate-600 text-gray-400 hover:border-indigo-500 hover:text-indigo-400"
+                      ${formData.reviewDays === days
+                        ? "bg-indigo-600 border-indigo-500 text-white"
+                        : "bg-slate-800 border-slate-600 text-gray-400 hover:border-indigo-500 hover:text-indigo-400"
                       }
                     `}
                   >

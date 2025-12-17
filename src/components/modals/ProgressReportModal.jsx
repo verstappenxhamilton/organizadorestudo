@@ -22,7 +22,7 @@ export const ProgressReportModal = ({
                 onClose();
             }
         }}>
-            <div className="modal large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal large" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
                 <h2>
                     Relatório de Progresso
                     <button className="close-btn" onClick={onClose}>
@@ -30,16 +30,21 @@ export const ProgressReportModal = ({
                     </button>
                 </h2>
 
-                <div className="p-6">
+                <div className="p-6 custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
                     {/* Estatísticas Gerais */}
-                    <div className="stats-grid" style={{ marginBottom: '30px' }}>
+                    <div className="stats-grid" style={{
+                        marginBottom: '30px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                        gap: '16px'
+                    }}>
                         <div className="stat-card">
                             <div className="stat-value">{totalStudyTime.toFixed(1)}h</div>
-                            <div className="stat-label">Total Horas Estudadas</div>
+                            <div className="stat-label">Total Horas</div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-value">{studiedSyllabusItems}</div>
-                            <div className="stat-label">Itens do Edital Estudados</div>
+                            <div className="stat-label">Itens Estudados</div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-value">{averageAccuracy.toFixed(1)}%</div>
@@ -47,7 +52,7 @@ export const ProgressReportModal = ({
                         </div>
                         <div className="stat-card">
                             <div className="stat-value">{studySessions.length}</div>
-                            <div className="stat-label">Sessões de Estudo</div>
+                            <div className="stat-label">Sessões</div>
                         </div>
                     </div>
 

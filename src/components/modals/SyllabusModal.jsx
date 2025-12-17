@@ -97,10 +97,12 @@ export const SyllabusModal = ({
     };
 
     const handleDeleteItem = (item) => {
-        const updatedItems = syllabusItems.filter(i => i.id !== item.id);
-        setSyllabusItems(updatedItems);
-        saveToLocalStorage('syllabusItems', updatedItems);
-        showToast('Item removido com sucesso!', 'success');
+        if (window.confirm(`Tem certeza que deseja excluir o tópico "${item.name}"?`)) {
+            const updatedItems = syllabusItems.filter(i => i.id !== item.id);
+            setSyllabusItems(updatedItems);
+            saveToLocalStorage('syllabusItems', updatedItems);
+            showToast('Item removido com sucesso!', 'success');
+        }
     };
 
     const handleMoveItemUp = (item) => {

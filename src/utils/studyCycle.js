@@ -78,7 +78,23 @@ export const pickNextTopicForSubject = (syllabusItems, subjectId) => {
   const items = (Array.isArray(syllabusItems) ? syllabusItems : []).filter(i => i?.subjectId === subjectId);
   if (!items.length) return null;
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const sorted = [...items].sort((a, b) => {
+    // 1. High Priority: Due Reviews
+    // Item is eligible for review if isStudied=true AND nextReviewDate <= Today
+    const aIsDue = a?.isStudied && a?.nextReviewDate && a.nextReviewDate <= todayStr;
+    const bIsDue = b?.isStudied && b?.nextReviewDate && b.nextReviewDate <= todayStr;
+
+    if (aIsDue && !bIsDue) return -1;
+    if (!aIsDue && bIsDue) return 1;
+
+    // 2. If both due, pick earliest review date
+    if (aIsDue && bIsDue) {
+      return a.nextReviewDate.localeCompare(b.nextReviewDate);
+    }
+
+    // 3. Fallback: Not due. Prefer "Not Studied" over "Studied" (Standard flow)
     const aStudied = a?.isStudied ? 1 : 0;
     const bStudied = b?.isStudied ? 1 : 0;
     if (aStudied !== bStudied) return aStudied - bStudied;

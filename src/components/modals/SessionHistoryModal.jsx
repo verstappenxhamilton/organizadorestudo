@@ -141,7 +141,7 @@ export const SessionHistoryModal = ({
                                                 }}>
                                                     {(session.duration / 60).toFixed(1)}h
                                                 </span>
-                                                {session.accuracy !== undefined && (
+                                                {Number.isFinite(session.accuracy) && (
                                                     <span style={{
                                                         color: '#10b981',
                                                         fontWeight: '500',

@@ -1055,3 +1055,98 @@ body {
   resize: vertical;
   min-height: 100px;
 }
+
+/* --- MOBILE REFINEMENTS FOR STUDY CYCLE --- */
+@media (max-width: 768px) {
+  .cycle-body {
+    flex-direction: column;
+    align-items: center !important;
+    gap: 24px;
+  }
+
+  .cycle-pane {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .cycle-wheel {
+    margin: 0 auto !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .cycle-donut {
+    margin: 0 auto !important;
+  }
+}
+
+/* --- MOBILE REFINEMENTS v2 (Force Vertical Stack) --- */
+@media (max-width: 768px) {
+  .cycle-body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch !important;
+    /* Full Width */
+    gap: 24px;
+    width: 100%;
+  }
+
+  .cycle-pane {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    /* Full Width */
+  }
+
+  /* VERTICAL STACK: Chart Top, Info Bottom */
+  .cycle-wheel {
+    display: flex !important;
+    flex-direction: column !important;
+    /* Stack them! */
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 24px;
+
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .cycle-donut {
+    margin: 0 auto !important;
+    width: 260px !important;
+    height: 260px !important;
+    flex-shrink: 0;
+  }
+
+  .cycle-wheel__side {
+    width: 100% !important;
+    max-width: 320px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    text-align: center;
+  }
+
+  /* Center the Topic Text */
+  .cycle-next-title {
+    text-align: center !important;
+    justify-content: center !important;
+    /* For flex items */
+    width: 100%;
+  }
+
+  /* Center the meta labels */
+  .cycle-select__meta {
+    text-align: center !important;
+    align-items: center !important;
+  }
+}

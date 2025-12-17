@@ -89,6 +89,8 @@ function App() {
   const [currentSubjectForSyllabus, setCurrentSubjectForSyllabus] = useState(null);
   const [selectedSubjectForHistory, setSelectedSubjectForHistory] = useState(null);
   const [initialSessionData, setInitialSessionData] = useState(null);
+  const [cycleAdvanceNonce, setCycleAdvanceNonce] = useState(0);
+  const [cycleSessionContext, setCycleSessionContext] = useState(null);
 
   // --- HANDLERS ---
 
@@ -121,6 +123,12 @@ function App() {
     setIsSessionModalOpen(false);
     setEditingSession(null);
     setCurrentSubjectForSession(null);
+    setInitialSessionData(null);
+
+    if (!editingSession && cycleSessionContext) {
+      setCycleAdvanceNonce((prev) => prev + 1);
+    }
+    setCycleSessionContext(null);
     showToast("Sessão registrada!", "success");
   };
 
@@ -156,6 +164,25 @@ function App() {
     const items = syllabusItems.filter((i) => i.subjectId === id);
     if (!items.length) return 0;
     return (items.filter((i) => i.isStudied).length / items.length) * 100;
+  };
+
+  const handleToggleStudied = (itemId) => {
+    setSyllabusItems((prev) => {
+      const item = prev.find((i) => i.id === itemId);
+      if (!item) return prev;
+
+      const newStatus = !item.isStudied;
+      showToast(
+        newStatus ? "Tópico marcado como estudado!" : "Tópico desmarcado como estudado.",
+        "success"
+      );
+
+      const updated = prev.map((i) =>
+        i.id === itemId ? { ...i, isStudied: newStatus } : i,
+      );
+      saveToLocalStorage("syllabusItems", updated);
+      return updated;
+    });
   };
 
   // --- RENDER ---
@@ -206,18 +233,15 @@ function App() {
             subjects={activeSubjects}
             syllabusItems={activeSyllabusItems}
             profileId={activeProfileId}
+            advanceNonce={cycleAdvanceNonce}
             onSaveConfig={() => { }}
             onStartSession={(subjectId, topicId) => {
               setCurrentSubjectForSession(subjectId);
               setInitialSessionData({ subjectId, syllabusItemId: topicId });
+              setCycleSessionContext({ subjectId, topicId });
               setIsSessionModalOpen(true);
             }}
             onMarkTopicStudied={(topicId) => {
-              // Use the hook action for this? Or keep local setter? 
-              // Hook provides updateSyllabusItem but here we need batch potentially?
-              // The original code used setSyllabusItems with a map.
-              // I added updateSyllabusItem to hook, but it does single item update.
-              // Let's use the setter exposed from hook.
               setSyllabusItems((prev) => {
                 const updated = prev.map((i) =>
                   i.id === topicId ? { ...i, isStudied: true } : i,
@@ -225,6 +249,7 @@ function App() {
                 saveToLocalStorage("syllabusItems", updated);
                 return updated;
               });
+              showToast("Tópico concluído!", "success");
             }}
           />
         </section>
@@ -267,6 +292,8 @@ function App() {
                   className="ui-btn ui-btn-primary"
                   onClick={() => {
                     setCurrentSubjectForSession(null);
+                    setInitialSessionData(null);
+                    setCycleSessionContext(null);
                     setIsSessionModalOpen(true);
                   }}
                 >
@@ -298,6 +325,8 @@ function App() {
                 setSelectedSyllabusItem={setSelectedSyllabusItem}
                 setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
                 studySessions={activeSessions}
+                addOrUpdateSession={addOrUpdateSession}
+                onToggleStudied={handleToggleStudied}
                 setIsSubjectModalOpen={setIsSubjectModalOpen}
                 setCurrentSubjectForSession={setCurrentSubjectForSession}
                 setIsSessionModalOpen={setIsSessionModalOpen}
@@ -318,6 +347,7 @@ function App() {
             <Calendar
               studySessions={activeSessions}
               syllabusItems={activeSyllabusItems}
+              subjects={activeSubjects}
             />
           </section>
         </>
@@ -378,7 +408,13 @@ function App() {
       />
       <SessionModal
         isOpen={isSessionModalOpen}
-        onClose={() => setIsSessionModalOpen(false)}
+        onClose={() => {
+          setIsSessionModalOpen(false);
+          setEditingSession(null);
+          setCurrentSubjectForSession(null);
+          setInitialSessionData(null);
+          setCycleSessionContext(null);
+        }}
         editingSession={editingSession}
         initialSessionData={initialSessionData}
         currentSubjectForSession={currentSubjectForSession}

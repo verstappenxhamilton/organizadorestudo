@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Clock, CheckCircle2, Calendar as CalendarIcon, BookOpen } from 'lucide-react';
 
-export const Calendar = ({ 
-  studySessions, 
+export const Calendar = ({
+  studySessions,
   syllabusItems,
-  onDateClick 
+  subjects = [],
+  onDateClick
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDayInfo, setSelectedDayInfo] = useState(null);
@@ -307,24 +308,38 @@ export const Calendar = ({
           <h3 className="agenda-title">{title}</h3>
         </div>
         <div className="agenda-list">
-          {sessions.map((s, i) => (
-            <div key={`s-${i}`} className="agenda-item">
-              <div className="item-icon study"><CheckCircle2 size={18} /></div>
-              <div className="item-content">
-                <div className="item-title">{s.subjectName || 'Estudo Realizado'}</div>
-                <div className="item-meta">{(s.duration / 60).toFixed(1)}h de estudo • {s.accuracy}% de acerto</div>
+          {sessions.map((s, i) => {
+            const subject = subjects?.find(sub => sub.id === s.subjectId);
+            const topic = syllabusItems?.find(item => item.id === s.syllabusItemId);
+
+            return (
+              <div key={`s-${i}`} className="agenda-item">
+                <div className="item-icon study"><CheckCircle2 size={18} /></div>
+                <div className="item-content">
+                  <div className="item-title">
+                    {subject?.name || 'Matéria'} • {topic?.name || 'Tópico'}
+                  </div>
+                  <div className="item-meta">
+                    {(s.duration / 60).toFixed(1)}h de estudo • {Number.isFinite(s.accuracy) ? `${s.accuracy}%` : '-'} acertos
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-          {reviews.map((r, i) => (
-            <div key={`r-${i}`} className="agenda-item">
-              <div className="item-icon review"><Clock size={18} /></div>
-              <div className="item-content">
-                <div className="item-title">{r.name}</div>
-                <div className="item-meta">Revisão Agendada</div>
+            );
+          })}
+          {reviews.map((r, i) => {
+            const subject = subjects?.find(s => s.id === r.subjectId);
+            return (
+              <div key={`r-${i}`} className="agenda-item">
+                <div className="item-icon review"><Clock size={18} /></div>
+                <div className="item-content">
+                  <div className="item-title">{r.name}</div>
+                  <div className="item-meta">
+                    {subject ? `${subject.name} • ` : ''}Revisão Agendada
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -333,7 +348,7 @@ export const Calendar = ({
   return (
     <div className="calendar-wrapper">
       <style>{calendarStyles}</style>
-      
+
       {/* Calendar Grid Card */}
       <div className="calendar-card">
         <div className="cal-header">
@@ -341,7 +356,7 @@ export const Calendar = ({
             <span style={{ textTransform: 'capitalize' }}>{monthNames[month]}</span>
             <span style={{ color: '#3b82f6' }}>{year}</span>
           </div>
-          
+
           <div className="cal-nav">
             <button className="nav-btn" onClick={goToPreviousMonth}><ChevronLeft size={20} /></button>
             <button className="nav-btn" onClick={goToNextMonth}><ChevronRight size={20} /></button>
