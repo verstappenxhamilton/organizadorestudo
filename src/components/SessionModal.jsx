@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { sanitizeMultilineText, sanitizeText } from "../utils/helpers";
 
 export const SessionModal = ({
@@ -100,7 +101,7 @@ export const SessionModal = ({
     ? syllabusItems.filter((item) => item.subjectId === formData.subjectId)
     : [];
 
-  return (
+  return createPortal(
     <div
       className="modal-overlay"
       onClick={(e) => {
@@ -370,6 +371,7 @@ export const SessionModal = ({
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

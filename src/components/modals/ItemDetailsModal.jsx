@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 export const ItemDetailsModal = ({
     isOpen,
@@ -48,7 +49,7 @@ export const ItemDetailsModal = ({
         color: '#e2e8f0'
     };
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={(e) => {
             if (e.target === e.currentTarget) {
                 onClose();
@@ -124,6 +125,7 @@ export const ItemDetailsModal = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

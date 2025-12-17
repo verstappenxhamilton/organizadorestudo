@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { sanitizeMultilineText, sanitizeText } from '../../utils/helpers';
 
 export const ProfileModal = ({
@@ -52,7 +53,7 @@ export const ProfileModal = ({
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={(e) => {
             if (e.target === e.currentTarget) {
                 onClose();
@@ -139,6 +140,7 @@ export const ProfileModal = ({
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PlusCircle } from 'lucide-react';
 import { SyllabusProcessor } from '../SyllabusProcessor';
 import { sanitizeText } from '../../utils/helpers';
@@ -151,7 +152,7 @@ export const SyllabusModal = ({
 
     const subjectItems = syllabusItems.filter(item => item.subjectId === currentSubjectForSyllabus.id);
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={(e) => {
             if (e.target === e.currentTarget) {
                 onClose();
@@ -212,6 +213,7 @@ export const SyllabusModal = ({
                 </div>
 
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

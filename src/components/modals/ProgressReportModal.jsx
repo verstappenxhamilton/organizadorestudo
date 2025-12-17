@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 export const ProgressReportModal = ({
     isOpen,
@@ -16,7 +17,7 @@ export const ProgressReportModal = ({
         ? syllabusItems.reduce((sum, item) => sum + (item.accuracy || 0), 0) / syllabusItems.length
         : 0;
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={(e) => {
             if (e.target === e.currentTarget) {
                 onClose();
@@ -127,6 +128,7 @@ export const ProgressReportModal = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

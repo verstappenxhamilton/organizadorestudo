@@ -1,9 +1,10 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 export const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirmar", cancelText = "Cancelar", isDanger = false }) => {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay">
       <div className="modal p-6 max-w-sm">
         <h3 className="text-lg font-bold text-white mb-2">
@@ -27,6 +28,7 @@ export const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel,
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

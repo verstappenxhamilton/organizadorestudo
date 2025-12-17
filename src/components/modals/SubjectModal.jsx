@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { sanitizeMultilineText, sanitizeText } from '../../utils/helpers';
 import { sanitizeHexColor } from '../../utils/studyCycle';
 
@@ -54,7 +55,7 @@ export const SubjectModal = ({
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={(e) => {
             if (e.target === e.currentTarget) {
                 onClose();
@@ -121,6 +122,7 @@ export const SubjectModal = ({
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
