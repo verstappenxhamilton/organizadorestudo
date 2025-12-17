@@ -12,7 +12,8 @@ import {
   Plus,
   Menu,
   X,
-  CheckCircle2
+  CheckCircle2,
+  ListChecks
 } from 'lucide-react';
 
 export const ProfileSection = ({ 
@@ -115,7 +116,9 @@ export const AppHeader = ({
   studyProfiles,
   activeProfileId,
   setActiveProfileId,
-  onOpenProfileModal
+  onOpenProfileModal,
+  onToggleCycle,
+  isCycleVisible
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -233,6 +236,12 @@ export const AppHeader = ({
         .action-btn.secondary:hover {
           background: rgba(148, 163, 184, 0.2);
           color: white;
+        }
+
+        .brand-section .action-btn.secondary {
+          padding: 8px 12px;
+          height: 38px;
+          border-radius: 10px;
         }
 
         .action-btn.admin {
@@ -433,6 +442,17 @@ export const AppHeader = ({
             <h1>Organizador</h1>
             <p>Painel de Controle de Estudos</p>
           </div>
+          <button
+            className="action-btn secondary"
+            style={{ padding: '10px 12px', borderRadius: '10px' }}
+            onClick={() => {
+              onToggleCycle?.();
+              setIsMobileMenuOpen(false);
+            }}
+          >
+            <ListChecks size={16} />
+            <span>{isCycleVisible ? 'Ocultar Ciclo' : 'Ciclo de Estudos'}</span>
+          </button>
         </div>
 
         <button 

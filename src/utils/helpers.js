@@ -9,23 +9,23 @@
  */
 export const formatDate = (date) => {
   if (!date) return '';
-  
+
   try {
     // Handle Firestore timestamp
     if (date.toDate && typeof date.toDate === 'function') {
       return date.toDate().toLocaleDateString('pt-BR');
     }
-    
+
     // Handle regular Date object
     if (date instanceof Date) {
       return date.toLocaleDateString('pt-BR');
     }
-    
+
     // Handle string dates
     if (typeof date === 'string') {
       return new Date(date).toLocaleDateString('pt-BR');
     }
-    
+
     return '';
   } catch (error) {
     console.warn('Error formatting date:', error);
@@ -40,23 +40,23 @@ export const formatDate = (date) => {
  */
 export const formatDuration = (hours) => {
   if (!hours || hours <= 0) return '0h';
-  
+
   if (hours < 1) {
     const minutes = Math.round(hours * 60);
     return `${minutes}min`;
   }
-  
+
   if (hours % 1 === 0) {
     return `${hours}h`;
   }
-  
+
   const wholeHours = Math.floor(hours);
   const minutes = Math.round((hours - wholeHours) * 60);
-  
+
   if (minutes === 0) {
     return `${wholeHours}h`;
   }
-  
+
   return `${wholeHours}h ${minutes}min`;
 };
 
@@ -152,6 +152,22 @@ export const sanitizeText = (text) => {
 };
 
 /**
+ * Sanitize multiline text input (keeps newlines)
+ * @param {string} text - Text to sanitize
+ * @returns {string} Sanitized text
+ */
+export const sanitizeMultilineText = (text) => {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map(line => line.trim().replace(/[ \t]+/g, ' '))
+    .join('\n')
+    .trim();
+};
+
+/**
  * Deep clone an object
  * @param {Object} obj - Object to clone
  * @returns {Object} Cloned object
@@ -182,6 +198,21 @@ export const isEmpty = (obj) => {
   return Object.keys(obj).length === 0;
 };
 
+/**
+ * Sanitize HEX color code
+ * @param {string} color - Color string
+ * @param {string} fallback - Fallback color
+ * @returns {string} Sanitized HEX color
+ */
+export const sanitizeHexColor = (color, fallback = '#000000') => {
+  if (!color || typeof color !== 'string') return fallback;
+  const hex = color.trim();
+  if (/^#?([0-9A-F]{3}|[0-9A-F]{6})$/i.test(hex)) {
+    return hex.startsWith('#') ? hex : `#${hex}`;
+  }
+  return fallback;
+};
+
 export default {
   formatDate,
   formatDuration,
@@ -192,6 +223,8 @@ export default {
   isValidEmail,
   isValidScore,
   sanitizeText,
+  sanitizeMultilineText,
+  sanitizeHexColor,
   deepClone,
   isEmpty,
 };

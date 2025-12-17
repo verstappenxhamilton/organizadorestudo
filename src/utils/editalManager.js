@@ -1,9 +1,10 @@
 // Utilitários para gerenciar editais administrativos
+import { loadFromLocalStorage, saveToLocalStorage } from './localStorage';
 
 export const loadAdminEditais = () => {
   try {
-    const saved = localStorage.getItem('admin_editais');
-    return saved ? JSON.parse(saved) : [];
+    const saved = loadFromLocalStorage('admin_editais', []);
+    return Array.isArray(saved) ? saved : [];
   } catch (error) {
     console.error('Erro ao carregar editais:', error);
     return [];
@@ -12,7 +13,7 @@ export const loadAdminEditais = () => {
 
 export const saveAdminEditais = (editais) => {
   try {
-    localStorage.setItem('admin_editais', JSON.stringify(editais));
+    saveToLocalStorage('admin_editais', editais);
     
     // Salvar também como arquivo JSON para simulação de database
     const dataStr = JSON.stringify(editais, null, 2);

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Save, X, Download, Upload } from 'lucide-react';
+import { sanitizeText } from '../utils/helpers';
+import { loadFromLocalStorage, saveToLocalStorage } from '../utils/localStorage';
 
 const AdminPage = () => {
   const [editais, setEditais] = useState([]);
@@ -26,10 +28,8 @@ const AdminPage = () => {
 
   const loadEditais = () => {
     try {
-      const saved = localStorage.getItem('admin_editais');
-      if (saved) {
-        setEditais(JSON.parse(saved));
-      }
+      const saved = loadFromLocalStorage('admin_editais', []);
+      setEditais(Array.isArray(saved) ? saved : []);
     } catch (error) {
       console.error('Erro ao carregar editais:', error);
     }
@@ -37,7 +37,7 @@ const AdminPage = () => {
 
   const saveEditais = (newEditais) => {
     try {
-      localStorage.setItem('admin_editais', JSON.stringify(newEditais));
+      saveToLocalStorage('admin_editais', newEditais);
       setEditais(newEditais);
       
       // Esta parte seria substituída por uma API real em produção
@@ -54,9 +54,26 @@ const AdminPage = () => {
       return;
     }
 
+    const safeMaterias = (Array.isArray(formData.materias) ? formData.materias : []).map((m) => ({
+      nome: sanitizeText(m?.nome || '').slice(0, 120),
+      peso: Math.max(0, Math.min(100, Number(m?.peso) || 1))
+    })).filter((m) => m.nome);
+
+    const safeItens = (Array.isArray(formData.itensEdital) ? formData.itensEdital : [])
+      .map((t) => sanitizeText(t || '').slice(0, 220))
+      .filter(Boolean);
+
     const newEdital = {
       id: editingEdital ? editingEdital.id : Date.now(),
       ...formData,
+      nome: sanitizeText(formData.nome).slice(0, 120),
+      concurso: sanitizeText(formData.concurso).slice(0, 120),
+      orgao: sanitizeText(formData.orgao).slice(0, 120),
+      banca: sanitizeText(formData.banca).slice(0, 120),
+      dataProva: sanitizeText(formData.dataProva).slice(0, 20),
+      inscricoesAte: sanitizeText(formData.inscricoesAte).slice(0, 20),
+      materias: safeMaterias,
+      itensEdital: safeItens,
       dataAtualização: new Date().toISOString()
     };
 

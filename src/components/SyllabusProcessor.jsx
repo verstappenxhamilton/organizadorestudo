@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ClipboardPaste, Eye, Trash2, Edit3, ChevronUp, ChevronDown, PlusCircle } from 'lucide-react';
+import { ClipboardPaste, Trash2, Edit3, ChevronUp, ChevronDown, PlusCircle } from 'lucide-react';
+import { sanitizeMultilineText, sanitizeText } from '../utils/helpers';
 
 export const SyllabusProcessor = ({
   onAddMultipleItems,
@@ -8,7 +9,8 @@ export const SyllabusProcessor = ({
   onUpdateItemName,
   onDeleteItem,
   onMoveItemUp,
-  onMoveItemDown
+  onMoveItemDown,
+  onQuickAddBelow
 }) => {
   const [pastedSyllabusText, setPastedSyllabusText] = useState('');
   const [processedPastedItems, setProcessedPastedItems] = useState([]);
@@ -19,15 +21,16 @@ export const SyllabusProcessor = ({
   const [manualItemName, setManualItemName] = useState('');
 
   const handleProcessPastedSyllabus = () => {
-    if (!pastedSyllabusText.trim()) {
+    const raw = sanitizeMultilineText(pastedSyllabusText);
+    if (!raw) {
       showToast("Nenhum texto para processar.", "info");
       return;
     }
 
-    const text = pastedSyllabusText.trim();
+    const text = raw;
     const parsedItemsOutput = [];
 
-    const subjectMatch = text.match(/^([A-ZÁÊÇÕ\s]+):\s*/);
+    const subjectMatch = text.match(/^([\p{L}\s]+):\s*/u);
     let processText = text;
     
     if (subjectMatch) {
@@ -44,21 +47,21 @@ export const SyllabusProcessor = ({
         const mainItemMatch = segment.match(/^(\d+)\s+(.+)/);
         if (mainItemMatch) {
           const [, number, content] = mainItemMatch;
-          parsedItemsOutput.push(`${number}. ${content.trim()}`);
+          parsedItemsOutput.push(`${number}. ${sanitizeText(content)}`);
           return;
         }
 
         const subItemMatch = segment.match(/^(\d+\.\d+)\.?\s+(.+)/);
         if (subItemMatch) {
           const [, number, content] = subItemMatch;
-          parsedItemsOutput.push(`${number}. ${content.trim()}`);
+          parsedItemsOutput.push(`${number}. ${sanitizeText(content)}`);
           return;
         }
 
         const subSubItemMatch = segment.match(/^(\d+\.\d+\.\d+)\.?\s+(.+)/);
         if (subSubItemMatch) {
           const [, number, content] = subSubItemMatch;
-          parsedItemsOutput.push(`${number}. ${content.trim()}`);
+          parsedItemsOutput.push(`${number}. ${sanitizeText(content)}`);
           return;
         }
 
@@ -66,14 +69,29 @@ export const SyllabusProcessor = ({
         if (anyNumberMatch) {
           const [, number, content] = anyNumberMatch;
           const cleanNumber = number.replace(/\.$/, '');
-          parsedItemsOutput.push(`${cleanNumber}. ${content.trim()}`);
+          parsedItemsOutput.push(`${cleanNumber}. ${sanitizeText(content)}`);
         }
       });
     };
 
     processItems();
 
-    const filteredItems = parsedItemsOutput.filter(item => item.trim().length > 0);
+    const existing = new Set(
+      (Array.isArray(syllabusItems) ? syllabusItems : [])
+        .map(i => sanitizeText(i?.name || '').toLowerCase())
+        .filter(Boolean)
+    );
+
+    const filteredItems = [];
+    const seen = new Set();
+    for (const item of parsedItemsOutput) {
+      const cleaned = sanitizeText(item).slice(0, 220);
+      if (!cleaned) continue;
+      const key = cleaned.toLowerCase();
+      if (seen.has(key) || existing.has(key)) continue;
+      seen.add(key);
+      filteredItems.push(cleaned);
+    }
     setProcessedPastedItems(filteredItems);
     showToast(`${filteredItems.length} item(ns) processado(s). Revise e adicione.`, "info");
   };
@@ -84,9 +102,10 @@ export const SyllabusProcessor = ({
   };
 
   const handleSaveItemName = (itemId) => {
-    if (editingItemNameValue.trim()) {
+    const cleaned = sanitizeText(editingItemNameValue).slice(0, 220);
+    if (cleaned) {
       const oldItem = syllabusItems.find(i => i.id === itemId);
-      onUpdateItemName(itemId, oldItem?.name, editingItemNameValue);
+      onUpdateItemName(itemId, oldItem?.name, cleaned);
       setEditingItemId(null);
       setEditingItemNameValue('');
     } else {
@@ -95,8 +114,9 @@ export const SyllabusProcessor = ({
   };
 
   const handleAddManualItem = () => {
-    if (manualItemName.trim()) {
-      onAddMultipleItems([manualItemName.trim()]);
+    const cleaned = sanitizeText(manualItemName).slice(0, 220);
+    if (cleaned) {
+      onAddMultipleItems([cleaned]);
       setManualItemName('');
       setIsAddingManualItem(false);
       showToast("Item adicionado com sucesso!", "success");
@@ -141,6 +161,13 @@ export const SyllabusProcessor = ({
               <ChevronDown size={14}/>
             </button>
             <div className="w-px h-3 bg-slate-600 mx-0.5"></div>
+            <button 
+              onClick={() => onQuickAddBelow && onQuickAddBelow(item)} 
+              title="Adicionar abaixo" 
+              className="text-emerald-400 hover:text-emerald-300 p-1 rounded hover:bg-emerald-900/20 transition-colors"
+            >
+              <PlusCircle size={14}/>
+            </button>
             <button 
               onClick={() => onEditItemName(item)} 
               title="Editar Nome" 
@@ -237,7 +264,7 @@ export const SyllabusProcessor = ({
           </h4>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
+        <div className="custom-scrollbar pr-1 space-y-1">
           {syllabusItems.length === 0 ? (
             <div className="text-center py-8 text-slate-500 italic bg-slate-800/50 rounded-lg border border-slate-700 border-dashed">
               Nenhum item cadastrado. <br/> Adicione manualmente ou importe um texto.
@@ -291,4 +318,3 @@ export const SyllabusProcessor = ({
     </div>
   );
 };
-
