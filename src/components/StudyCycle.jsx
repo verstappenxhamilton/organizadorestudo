@@ -1,5 +1,18 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap, CheckCircle2, SkipForward } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  RotateCcw,
+  SlidersHorizontal,
+  Zap,
+  CheckCircle2,
+  SkipForward,
+  PlayCircle,
+  BookOpen,
+  ArrowRight,
+  Settings2,
+  ChevronDown
+} from "lucide-react";
 import {
   buildSubjectsForCycle,
   generateCycleBatch,
@@ -96,7 +109,6 @@ export const StudyCycle = ({
   useEffect(() => {
     if (!profileId) return;
 
-    // Prevent re-running initialization if subjects change but profile matches
     if (loadedProfileRef.current === profileId) {
       return;
     }
@@ -170,9 +182,8 @@ export const StudyCycle = ({
     (s) => s.include && s.weight > 0,
   ), [subjectsForCycle]);
 
-  // Queue Validation, Sync, and Replenishment Effect
+  // Queue Validation and Sync
   useEffect(() => {
-    // If no active subjects, clear queue
     if (activeSubjects.length === 0) {
       if (queue.length > 0) {
         setQueue([]);
@@ -182,25 +193,21 @@ export const StudyCycle = ({
     }
 
     setQueue((prevQueue) => {
-      // 1. Validate and Sync: Remove items not in activeSubjects, update names
       let validQueue = prevQueue
         .map((item) => {
           const freshSubject = activeSubjects.find((s) => s.id === item.id);
-          if (!freshSubject) return null; // Subject deleted or disabled
-          return { ...item, name: freshSubject.name }; // Update name if changed
+          if (!freshSubject) return null;
+          return { ...item, name: freshSubject.name };
         })
         .filter(Boolean);
 
-      // 2. Replenish if validQueue is too short
       if (validQueue.length < slots) {
         const batch = generateCycleBatch(activeSubjects, 20);
-        // Avoid immediate duplicate: if last of validQueue == first of batch
         if (
           validQueue.length > 0 &&
           batch.length > 0 &&
           validQueue[validQueue.length - 1].id === batch[0].id
         ) {
-          // Swap first of batch with second if possible to avoid A->A
           if (batch.length > 1) {
             [batch[0], batch[1]] = [batch[1], batch[0]];
           }
@@ -208,9 +215,6 @@ export const StudyCycle = ({
         validQueue = [...validQueue, ...batch];
       }
 
-      // Only update state/storage if something changed
-      // (Simple length check or deep compare optimization could go here, 
-      // but for now strict sync is safer)
       const prevString = JSON.stringify(prevQueue);
       const nextString = JSON.stringify(validQueue);
 
@@ -220,29 +224,22 @@ export const StudyCycle = ({
       }
       return prevQueue;
     });
-    // Add queue.length to ensure we replenish when queue drains
   }, [activeSubjects, slots, queueKey, queue.length]);
 
-  // 1. Persistence: Save selection whenever it changes
   useEffect(() => {
     const id = normalizeId(selectedSubjectId);
     if (!id) return;
     localStorage.setItem(selectedKey, JSON.stringify(id));
   }, [selectedSubjectId, selectedKey]);
 
-  // 2. Smart Selection Logic (Init + Deletion Guard)
-  // Ensures we auto-select something on load, and handle deletions gracefully,
-  // without fighting the user's manual selection.
   const hasInitialCheckRef = useRef(false);
 
   useEffect(() => {
-    // Wait for subjects to load
     if (activeSubjects.length === 0) return;
 
     const currentId = normalizeId(selectedSubjectId);
     const isValid = currentId && activeSubjects.some((s) => s.id === currentId);
 
-    // A. Initial Check (Run Once per Profile Load)
     if (!hasInitialCheckRef.current) {
       if (!isValid) {
         const first = queue[0]?.id || activeSubjects[0]?.id;
@@ -252,31 +249,27 @@ export const StudyCycle = ({
       return;
     }
 
-    // B. Deletion Guard (Runtime)
-    // Only intervene if the CURRENT selection is strictly INVALID (Deleted/Disabled)
-    // We trust manual selections (which update selectedSubjectId) unless the subject itself disappears.
     if (currentId && !isValid) {
-      // It's gone! Pick new.
       const first = queue[0]?.id || activeSubjects[0]?.id;
       setSelectedSubjectId(first || null);
     }
 
-    // C. Empty State Recovery
-    // If we have no selection but we have candidates, auto-select.
     if (!currentId && queue.length > 0) {
       setSelectedSubjectId(queue[0].id);
     }
 
-  }, [activeSubjects, queue, selectedSubjectId]); // depend on ID to catch invalid states immediately
+  }, [activeSubjects, queue, selectedSubjectId]);
 
   const normalizedSelectedSubjectId = normalizeId(selectedSubjectId);
   const selectedSubject =
     (normalizedSelectedSubjectId &&
       activeSubjects.find((s) => s.id === normalizedSelectedSubjectId)) ||
     null;
+
   useEffect(() => {
     setSkippedTopicIds([]);
   }, [normalizedSelectedSubjectId]);
+
   const nextTopic = selectedSubject
     ? pickNextTopicForSubject(syllabusItems, selectedSubject.id, skippedTopicIds)
     : null;
@@ -321,7 +314,6 @@ export const StudyCycle = ({
   };
 
   const handleIncludeToggle = (id) => {
-    // Access current state directly from the cycleConfig variable in scope
     const prevEntry = cycleConfig[id] || {};
     const isCurrentlyIncluded = prevEntry.include !== false;
     const nextInclude = !isCurrentlyIncluded;
@@ -335,7 +327,6 @@ export const StudyCycle = ({
     localStorage.setItem(configKey, JSON.stringify(nextConfig));
     onSaveConfig?.(nextConfig);
 
-    // If we are disabling (nextInclude === false), remove from queue
     if (!nextInclude) {
       setQueue(prev => {
         const nextQ = prev.filter(i => i.id !== id);
@@ -348,16 +339,8 @@ export const StudyCycle = ({
   const handleModeChange = (mode) => {
     setWeightMode(mode);
     localStorage.setItem(modeKey, mode);
-    // Mode change affects weights drastically. Should we clear queue?
-    // Probably yes, to reflect new weights immediately.
     setQueue([]);
     localStorage.removeItem(queueKey);
-  };
-
-  const handleSlotsChange = (value) => {
-    const nextSlots = clampNumber(value, 6, 24);
-    setSlots(nextSlots);
-    localStorage.setItem(slotsKey, String(nextSlots));
   };
 
   const handlePickNextFromQueue = () => {
@@ -395,14 +378,12 @@ export const StudyCycle = ({
     const dy = local.y - 60;
     const r = Math.sqrt(dx * dx + dy * dy);
 
-    // Only respond to clicks on the ring (avoid accidental picks)
     const maxStrokeWidth = 18;
     const tolerance = 2;
     const innerRadius = donutData.radius - maxStrokeWidth / 2 - tolerance;
     const outerRadius = donutData.radius + maxStrokeWidth / 2 + tolerance;
     if (r < innerRadius || r > outerRadius) return;
 
-    // Angle: 0 at top, clockwise (matches the -90° rotation used for drawing)
     const tau = 2 * Math.PI;
     const angleFromX = Math.atan2(dy, dx);
     const normalized = (angleFromX + tau) % tau;
@@ -418,9 +399,7 @@ export const StudyCycle = ({
   const handleSelectSubject = (nextIdRaw) => {
     const nextId = normalizeId(nextIdRaw);
     if (!nextId) return;
-
-    const currentId = normalizeId(selectedSubjectId);
-    if (currentId === nextId) return;
+    if (normalizeId(selectedSubjectId) === nextId) return;
     setSelectedSubjectId(nextId);
   };
 
@@ -433,8 +412,6 @@ export const StudyCycle = ({
     setCycleConfig(equal);
     localStorage.setItem(configKey, JSON.stringify(equal));
     onSaveConfig?.(equal);
-
-    // Clear queue to respect new equal weights
     setQueue([]);
     localStorage.removeItem(queueKey);
   };
@@ -443,8 +420,6 @@ export const StudyCycle = ({
     setCycleConfig({});
     localStorage.removeItem(configKey);
     onSaveConfig?.({});
-
-    // Reset Queue
     setQueue([]);
     localStorage.removeItem(queueKey);
   };
@@ -460,337 +435,312 @@ export const StudyCycle = ({
     handlePickNextFromQueue();
   };
 
+  if (subjects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-slate-800/50 border border-slate-700 rounded-2xl text-center">
+        <p className="text-slate-400 mb-4">Você ainda não tem matérias cadastradas.</p>
+        <button className="ui-btn ui-btn-primary" onClick={() => setIsConfigOpen(true)}>
+          Adicionar Matérias
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="ui-card study-cycle">
-      <div className="cycle-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div className="space-y-6">
+
+      {/* --- HEADER --- */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50">
         <div>
-          <p className="cycle-eyebrow">Ciclo de estudos</p>
-          <h3 className="cycle-title">Próxima sessão</h3>
-          <p className="cycle-sub">
-            Clique no gráfico para escolher a matéria e iniciar.
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Zap size={20} className="text-amber-400" />
+            Painel do Ciclo
+          </h3>
+          <p className="text-sm text-slate-400">
+            Visualize sua rotação e gerencie o próximo passo.
           </p>
         </div>
-        <div className="cycle-head__actions">
-          <button
-            className="ui-btn ui-btn-secondary"
-            onClick={() => setIsConfigOpen((prev) => !prev)}
-            aria-expanded={isConfigOpen}
-          >
-            <SlidersHorizontal size={16} />{" "}
-            {isConfigOpen ? "Fechar" : "Configurar"}
-          </button>
-        </div>
+        <button
+          className={`ui-btn ${isConfigOpen ? 'bg-slate-700 text-white' : 'ui-btn-secondary'}`}
+          onClick={() => setIsConfigOpen(!isConfigOpen)}
+        >
+          <SlidersHorizontal size={16} />
+          {isConfigOpen ? "Ocultar Ajustes" : "Ajustar Ciclo"}
+        </button>
       </div>
 
-      {subjects.length === 0 ? (
-        <div className="cycle-empty">Nenhuma matéria neste perfil.</div>
-      ) : (
-        <div className="cycle-body">
-          <div className="cycle-pane cycle-pane--primary">
-            {activeSubjects.length === 0 ? (
-              <div className="cycle-empty cycle-empty--stack">
-                <p className="cycle-muted">
-                  {weightMode === "edital"
-                    ? "Defina a meta de horas nas matérias (ou use pesos manuais) para montar o ciclo."
-                    : "Inclua pelo menos uma matéria com peso."}
-                </p>
+      {/* --- CONFIGURATION PANEL (Collapsible) --- */}
+      {isConfigOpen && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-enter shadow-inner">
+           <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+              <h4 className="font-semibold text-white flex items-center gap-2">
+                 <Settings2 size={18} className="text-indigo-400"/> Configuração de Pesos
+              </h4>
+              <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
                 <button
-                  className="ui-btn ui-btn-primary"
-                  onClick={() => setIsConfigOpen(true)}
+                  onClick={() => handleModeChange("edital")}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${weightMode === 'edital' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                 >
-                  <SlidersHorizontal size={16} /> Configurar ciclo
+                  Automático (Edital)
+                </button>
+                <button
+                  onClick={() => handleModeChange("manual")}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${weightMode === 'manual' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Manual
                 </button>
               </div>
-            ) : (
-              <div className="cycle-wheel">
-                <div
-                  className="cycle-donut"
-                  role="img"
-                  aria-label="Distribuição do ciclo"
-                >
-                  <svg
-                    className="cycle-donut__svg"
-                    viewBox="0 0 120 120"
-                    aria-hidden="true"
-                    onClick={handleDonutClick}
-                  >
-                    <circle
-                      cx="60"
-                      cy="60"
-                      r={donutData.radius}
-                      fill="transparent"
-                      stroke="rgba(255,255,255,0.06)"
-                      strokeWidth="16"
-                    />
-                    <g transform="rotate(-90 60 60)">
-                      {donutData.segments.map((seg) => (
-                        <circle
-                          key={seg.id}
-                          className={`cycle-donut__seg ${seg.id === normalizedSelectedSubjectId ? "is-selected" : ""}`}
-                          cx="60"
-                          cy="60"
-                          r={donutData.radius}
-                          fill="transparent"
-                          stroke={seg.color}
-                          strokeWidth={seg.id === normalizedSelectedSubjectId ? 18 : 16}
-                          strokeDasharray={seg.dashArray}
-                          strokeDashoffset={seg.dashOffset}
-                          strokeLinecap="butt"
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`Selecionar ${seg.name}`}
-                          onKeyDown={(e) => {
-                            if (e.key !== "Enter" && e.key !== " ") return;
-                            e.preventDefault();
-                            handleSelectSubject(seg.id);
-                          }}
-                        >
-                          <title>{`${seg.name} (${seg.weightLabel})`}</title>
-                        </circle>
-                      ))}
-                    </g>
-                  </svg>
+           </div>
 
-                  <div className="cycle-donut__center">
-                    <div className="cycle-next-title">
-                      {selectedSubject?.name || "-"}
-                    </div>
-                    <span className="cycle-muted text-xs">
-                      Depois: {nextSubject?.name || "-"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="cycle-wheel__side">
-                  <div className="cycle-select-row">
-                    <div className="cycle-select__meta">
-                      {/* Integrated Select List (No Redundant Label) */}
+           <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+              {subjectsForCycle.map((s) => (
+                <div key={s.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                   <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full shadow-[0_0_8px]" style={{ backgroundColor: s.color, boxShadow: `0 0 10px ${s.color}40` }} />
                       <div>
-                        <span className="cycle-muted text-xs">Matéria</span>
-                        <select
-                          className="cycle-select-dropdown"
-                          value={selectedSubjectId || ""}
-                          onChange={(e) => handleSelectSubject(e.target.value)}
-                          aria-label="Selecionar matéria para o ciclo"
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            background: '#1e293b',
-                            color: '#fff',
-                            border: '1px solid #334155',
-                            padding: '4px',
-                            borderRadius: '4px',
-                            marginTop: '2px',
-                            fontWeight: 600
-                          }}
-                        >
-                          {activeSubjects.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </select>
+                        <p className="font-semibold text-slate-200">{s.name}</p>
+                        <p className="text-xs text-slate-500">Peso atual: {s.weight}</p>
                       </div>
+                   </div>
 
-                      {/* Topic Suggestion with Green Dot */}
-                      <div>
-                        <span className="cycle-muted text-xs">
-                          Tópico sugerido
-                        </span>
-                        <button
-                          type="button"
-                          className="cycle-pill"
-                          style={{ padding: "4px 8px", fontSize: "0.75rem", marginLeft: 8 }}
-                          onClick={handleSkipTopic}
-                          disabled={!nextTopic?.id}
-                          aria-label="Pular tópico sugerido"
-                          title="Pular tópico sugerido"
-                        >
-                          <SkipForward size={14} /> Pular
-                        </button>
-                        <div className="cycle-next-title flex items-center gap-2">
-                          {nextTopic?.name || "Cadastre tópicos"}
-                          {nextTopic?.isStudied && (
-                            <CheckCircle2
-                              size={16}
-                              className="text-emerald-500 flex-shrink-0"
-                              aria-label="Tópico já estudado (Revisão)"
-                            />
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="cycle-muted text-xs">Depois</span>
-                        <div className="cycle-next-title">
-                          {nextSubject?.name || "-"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="cycle-actions">
-                      <button
-                        className="ui-btn ui-btn-primary"
-                        onClick={handleStart}
-                        disabled={!selectedSubject}
-                      >
-                        Iniciar sessão
-                      </button>
-                      <button
-                        className="ui-btn ui-btn-secondary"
-                        onClick={handleMarkDone}
-                        disabled={!hasActionTarget}
-                      >
-                        Concluir tópico
-                      </button>
-                      <button
-                        className="ui-btn ui-btn-secondary"
-                        onClick={handlePickNextFromQueue}
-                        disabled={donutData.segments.length < 2}
-                      >
-                        <Zap size={16} /> Próximo do ciclo
-                      </button>
-                    </div>
-                  </div>
-
-
-                </div>
-              </div>
-            )}
-          </div>
-
-          <details
-            className="cycle-pane cycle-config"
-            open={isConfigOpen}
-            onToggle={(e) => setIsConfigOpen(e.currentTarget.open)}
-          >
-            <summary className="cycle-config__summary">
-              <span>Configuração do ciclo</span>
-              <span className="cycle-config__badge">
-                {weightMode === "edital" ? "Edital" : "Manual"}
-              </span>
-            </summary>
-
-            <div className="cycle-config__content">
-              <p className="cycle-muted">
-                {weightMode === "edital"
-                  ? "Os pesos são calculados a partir da meta de horas de cada matéria."
-                  : "Defina pesos (0 a 10) e pause matérias quando necessário."}
-              </p>
-
-              <div className="cycle-config__controls">
-                <div
-                  className="mode-switch"
-                  aria-label="Modo de pesos do ciclo"
-                >
-                  <button
-                    className={weightMode === "edital" ? "is-active" : ""}
-                    onClick={() => handleModeChange("edital")}
-                    type="button"
-                  >
-                    Pesos do edital
-                  </button>
-                  <button
-                    className={weightMode === "manual" ? "is-active" : ""}
-                    onClick={() => handleModeChange("manual")}
-                    type="button"
-                  >
-                    Pesos manuais
-                  </button>
-                </div>
-
-                <div className="cycle-actions">
-                  <button
-                    className="ui-btn ui-btn-secondary"
-                    onClick={handleEqualize}
-                    disabled={weightMode === "edital"}
-                  >
-                    <Zap size={16} /> Pesos iguais
-                  </button>
-                  <button
-                    className="ui-btn ui-btn-secondary"
-                    onClick={handleReset}
-                  >
-                    <RotateCcw size={16} /> Resetar
-                  </button>
-                </div>
-              </div>
-
-              <div className="cycle-config__row">
-
-              </div>
-
-              <div className="cycle-list">
-                {subjectsForCycle.map((s) => {
-                  const items = syllabusItems.filter(
-                    (i) => i.subjectId === s.id,
-                  );
-                  const studied = items.filter((i) => i.isStudied).length;
-
-                  return (
-                    <div key={s.id} className="cycle-item">
-                      <div className="cycle-item__top">
-                        <div className="cycle-item__title">
-                          <span
-                            className="cycle-dot"
-                            style={{ background: s.color }}
-                          />
-                          <div>
-                            <div className="cycle-item__name">{s.name}</div>
-                            <div className="cycle-item__meta">
-                              {studied}/{items.length || 0} tópicos{" "}
-                              {weightMode === "edital"
-                                ? `| meta ${s._targetHours || 0}h | peso ${s.weight}`
-                                : `| peso ${s.weight}`}
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          className="cycle-pill"
-                          onClick={() => handleIncludeToggle(s.id)}
-                          type="button"
-                        >
-                          {s.include ? <EyeOff size={16} /> : <Eye size={16} />}{" "}
-                          {s.include ? "Pausar" : "Ativar"}
-                        </button>
-                      </div>
-
-                      {weightMode === "manual" && (
-                        <div className="cycle-weight">
-                          <span className="cycle-muted text-xs">
-                            Peso manual
-                          </span>
-                          <div className="cycle-weight__controls">
+                   <div className="flex items-center gap-4">
+                      {weightMode === 'manual' && (
+                         <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 border border-slate-700">
                             <input
-                              type="range"
-                              min="0"
-                              max="10"
-                              step="0.5"
+                              type="range" min="0" max="10" step="0.5"
                               value={s.weight}
-                              onChange={(e) =>
-                                handleWeightChange(s.id, e.target.value)
-                              }
+                              onChange={(e) => handleWeightChange(s.id, e.target.value)}
+                              className="w-24 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                             />
-                            <input
-                              type="number"
-                              min="0"
-                              max="10"
-                              step="0.5"
-                              value={s.weight}
-                              onChange={(e) =>
-                                handleWeightChange(s.id, e.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
+                            <span className="w-8 text-center text-sm font-mono text-slate-300">{s.weight}</span>
+                         </div>
                       )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </details>
+
+                      <button
+                        onClick={() => handleIncludeToggle(s.id)}
+                        className={`p-2 rounded-lg transition-colors ${s.include ? 'text-emerald-400 hover:bg-emerald-400/10' : 'text-slate-500 hover:text-slate-300'}`}
+                        title={s.include ? "Incluído no ciclo" : "Pausado"}
+                      >
+                         {s.include ? <Eye size={18} /> : <EyeOff size={18} />}
+                      </button>
+                   </div>
+                </div>
+              ))}
+           </div>
+
+           <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-800">
+             {weightMode === 'manual' && (
+               <button onClick={handleEqualize} className="ui-btn ui-btn-ghost text-xs">
+                 Equalizar Pesos
+               </button>
+             )}
+             <button onClick={handleReset} className="ui-btn ui-btn-ghost text-red-400 hover:bg-red-400/10 text-xs">
+                 <RotateCcw size={14}/> Resetar Configuração
+             </button>
+           </div>
         </div>
       )}
+
+      {/* --- MAIN CONTENT GRID --- */}
+      {activeSubjects.length === 0 ? (
+        <div className="p-8 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-200 text-center">
+            <p>Todas as matérias estão pausadas ou sem peso. Ajuste a configuração acima.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
+
+          {/* LEFT: VISUALIZATION */}
+          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden">
+             {/* Background Decoration */}
+             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+
+             <div className="relative z-10 scale-110 sm:scale-125 transition-transform duration-500">
+                <svg
+                    viewBox="0 0 120 120"
+                    className="w-[280px] h-[280px] drop-shadow-2xl"
+                    onClick={handleDonutClick}
+                >
+                    {/* Track */}
+                    <circle cx="60" cy="60" r={donutData.radius} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="16" />
+
+                    {/* Segments */}
+                    <g transform="rotate(-90 60 60)">
+                      {donutData.segments.map((seg) => {
+                         const isSelected = seg.id === normalizedSelectedSubjectId;
+                         return (
+                            <circle
+                              key={seg.id}
+                              cx="60"
+                              cy="60"
+                              r={donutData.radius}
+                              fill="none"
+                              stroke={seg.color}
+                              strokeWidth={isSelected ? 18 : 16}
+                              strokeDasharray={seg.dashArray}
+                              strokeDashoffset={seg.dashOffset}
+                              className={`transition-all duration-300 cursor-pointer hover:opacity-100 ${isSelected ? 'opacity-100' : 'opacity-80 hover:stroke-[17px]'}`}
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleSelectSubject(seg.id);
+                              }}
+                            >
+                               <title>{seg.name}</title>
+                            </circle>
+                         );
+                      })}
+                    </g>
+                </svg>
+
+                {/* Center Content */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <div className="text-center max-w-[140px]">
+                       <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 block">Atual</span>
+                       <p className="text-lg font-bold text-white leading-tight line-clamp-2">
+                          {selectedSubject?.name || "Selecione"}
+                       </p>
+                    </div>
+                </div>
+             </div>
+
+             <p className="mt-12 text-slate-500 text-sm flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-slate-600 animate-pulse"/>
+                Clique nos segmentos para navegar
+             </p>
+          </div>
+
+          {/* RIGHT: CONTROLLER CARD */}
+          <div className="flex flex-col gap-5">
+
+             {/* ACTIVE SUBJECT CARD */}
+             <div className="relative bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-2xl overflow-hidden group">
+
+                {/* Colored Top Bar */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-1.5 transition-colors duration-300"
+                  style={{ background: selectedSubject?.color || '#475569' }}
+                />
+
+                <div className="mb-6 relative z-10">
+                   <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border border-slate-700 px-2 py-1 rounded-md bg-slate-900/50">
+                            Matéria da Vez
+                        </span>
+
+                        {/* Dropdown for quick switching */}
+                        <div className="relative mt-3 group-hover:bg-slate-700/30 p-2 -ml-2 rounded-lg transition-colors min-w-0">
+                            {/* Visible Text Layer */}
+                            <div className="flex items-start justify-between gap-2 pr-6">
+                                <h2 className="text-2xl font-bold text-white leading-tight break-words">
+                                    {selectedSubject?.name}
+                                </h2>
+                                <ChevronDown className="text-slate-500 flex-shrink-0 mt-1" size={20} />
+                            </div>
+
+                            {/* Invisible Interactive Layer */}
+                            <select
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none"
+                                value={selectedSubjectId || ""}
+                                onChange={(e) => handleSelectSubject(e.target.value)}
+                                aria-label="Alterar matéria selecionada"
+                            >
+                                {activeSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                      </div>
+
+                      {/* Subject Icon/Initial */}
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg"
+                        style={{ background: selectedSubject?.color || '#334155' }}
+                      >
+                         {selectedSubject?.name?.charAt(0) || "?"}
+                      </div>
+                   </div>
+                </div>
+
+                {/* NEXT TOPIC BOX */}
+                <div className="bg-slate-900/60 rounded-xl p-4 mb-6 border border-slate-700/50 relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                            <BookOpen size={14} /> Sugestão do Edital
+                        </span>
+                        {nextTopic?.id && (
+                            <button
+                                onClick={handleSkipTopic}
+                                className="text-[10px] font-medium text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded border border-slate-700 transition-colors"
+                            >
+                                Pular Sugestão
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="relative z-10">
+                        <p className="text-slate-200 font-medium leading-relaxed">
+                            {nextTopic ? (
+                                <>
+                                  {nextTopic.name}
+                                  {nextTopic.isStudied && (
+                                     <span className="ml-2 inline-flex items-center text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded border border-emerald-400/20">
+                                        <CheckCircle2 size={10} className="mr-1"/> Revisão
+                                     </span>
+                                  )}
+                                </>
+                            ) : (
+                                <span className="text-slate-500 italic">Nenhum tópico pendente encontrado.</span>
+                            )}
+                        </p>
+                    </div>
+                </div>
+
+                {/* MAIN ACTION BUTTON */}
+                <button
+                    onClick={handleStart}
+                    disabled={!selectedSubject}
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-[0_0_20px_-5px_rgba(99,102,241,0.4)] transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 mb-3"
+                >
+                    <PlayCircle size={24} className="fill-white/20" />
+                    INICIAR SESSÃO
+                </button>
+
+                {/* SECONDARY ACTIONS GRID */}
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={handleMarkDone}
+                        disabled={!hasActionTarget}
+                        className="ui-btn bg-slate-700/50 hover:bg-emerald-500/10 hover:text-emerald-400 border-slate-700 text-slate-300 py-3 rounded-lg justify-center text-xs font-semibold transition-all"
+                    >
+                        <CheckCircle2 size={16} />
+                        Marcar Visto
+                    </button>
+                    <button
+                        onClick={handlePickNextFromQueue}
+                        disabled={donutData.segments.length < 2}
+                        className="ui-btn bg-slate-700/50 hover:bg-amber-500/10 hover:text-amber-400 border-slate-700 text-slate-300 py-3 rounded-lg justify-center text-xs font-semibold transition-all"
+                    >
+                        <Zap size={16} />
+                        Avançar Ciclo
+                    </button>
+                </div>
+             </div>
+
+             {/* UP NEXT INDICATOR */}
+             <div className="bg-slate-900/30 rounded-xl p-4 border border-slate-800 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700">
+                    <ArrowRight size={18} />
+                </div>
+                <div>
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Na sequência</p>
+                    <p className="text-sm text-slate-300 font-semibold truncate max-w-[200px]">
+                        {nextSubject?.name || "..."}
+                    </p>
+                </div>
+             </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
