@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, RotateCcw, SlidersHorizontal, Zap, CheckCircle2, SkipForward } from "lucide-react";
 import {
   buildSubjectsForCycle,
   generateCycleBatch,
@@ -85,6 +85,7 @@ export const StudyCycle = ({
   const [slots, setSlots] = useState(12);
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [skippedTopicIds, setSkippedTopicIds] = useState([]);
 
   // Persistent Queue State
   const [queue, setQueue] = useState([]);
@@ -273,8 +274,11 @@ export const StudyCycle = ({
     (normalizedSelectedSubjectId &&
       activeSubjects.find((s) => s.id === normalizedSelectedSubjectId)) ||
     null;
+  useEffect(() => {
+    setSkippedTopicIds([]);
+  }, [normalizedSelectedSubjectId]);
   const nextTopic = selectedSubject
-    ? pickNextTopicForSubject(syllabusItems, selectedSubject.id)
+    ? pickNextTopicForSubject(syllabusItems, selectedSubject.id, skippedTopicIds)
     : null;
   const hasActionTarget = Boolean(selectedSubject && nextTopic);
 
@@ -359,6 +363,17 @@ export const StudyCycle = ({
   const handlePickNextFromQueue = () => {
     if (!nextSubject?.id) return;
     setSelectedSubjectId(nextSubject.id);
+  };
+
+  const handleSkipTopic = () => {
+    if (!selectedSubject?.id || !nextTopic?.id) return;
+    setSkippedTopicIds((prev) => {
+      const next = prev.includes(nextTopic.id) ? prev : [...prev, nextTopic.id];
+      const total = syllabusItems.filter(
+        (i) => String(i?.subjectId ?? "") === String(selectedSubject.id),
+      ).length;
+      return total > 0 && next.length >= total ? [] : next;
+    });
   };
 
   const handleDonutClick = (e) => {
@@ -582,6 +597,17 @@ export const StudyCycle = ({
                         <span className="cycle-muted text-xs">
                           Tópico sugerido
                         </span>
+                        <button
+                          type="button"
+                          className="cycle-pill"
+                          style={{ padding: "4px 8px", fontSize: "0.75rem", marginLeft: 8 }}
+                          onClick={handleSkipTopic}
+                          disabled={!nextTopic?.id}
+                          aria-label="Pular tópico sugerido"
+                          title="Pular tópico sugerido"
+                        >
+                          <SkipForward size={14} /> Pular
+                        </button>
                         <div className="cycle-next-title flex items-center gap-2">
                           {nextTopic?.name || "Cadastre tópicos"}
                           {nextTopic?.isStudied && (

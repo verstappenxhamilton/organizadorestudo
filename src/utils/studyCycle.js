@@ -74,8 +74,14 @@ export const buildSubjectsForCycle = ({ subjects, mode, cycleConfig }) => {
   });
 };
 
-export const pickNextTopicForSubject = (syllabusItems, subjectId) => {
-  const items = (Array.isArray(syllabusItems) ? syllabusItems : []).filter(i => i?.subjectId === subjectId);
+export const pickNextTopicForSubject = (syllabusItems, subjectId, excludedItemIds = []) => {
+  const subjectIdStr = String(subjectId ?? '');
+  const excludedList = Array.isArray(excludedItemIds) ? excludedItemIds : [excludedItemIds];
+  const excluded = new Set(excludedList.map((id) => String(id ?? '')));
+
+  const items = (Array.isArray(syllabusItems) ? syllabusItems : []).filter(i =>
+    String(i?.subjectId ?? '') === subjectIdStr && !excluded.has(String(i?.id ?? ''))
+  );
   if (!items.length) return null;
 
   const todayStr = new Date().toISOString().split('T')[0];
