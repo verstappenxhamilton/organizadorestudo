@@ -266,9 +266,6 @@ export const SessionModal = ({
                     <h3 className="font-semibold text-sm uppercase tracking-wide">Quando?</h3>
                   </div>
                    <div className="form-group">
-                    <label className="form-label text-sm text-gray-400 mb-1 block">
-                      Data <span className="text-red-500">*</span>
-                    </label>
                     <input
                       type="date"
                       className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-emerald-500 outline-none"
@@ -278,6 +275,9 @@ export const SessionModal = ({
                       }
                       required
                     />
+                    <label className="form-label text-sm text-gray-400 mt-1 block">
+                      Data <span className="text-red-500">*</span>
+                    </label>
                   </div>
                </div>
 
@@ -293,7 +293,7 @@ export const SessionModal = ({
                         <input
                           type="number"
                           step="0.01"
-                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none pl-10"
+                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none"
                           value={currentDurationInMinutes > 0 ? currentDurationInMinutes.toFixed(2) : ""}
                           onChange={(e) => {
                              // Only allow manual edit if timer is NOT running for this session
@@ -309,10 +309,6 @@ export const SessionModal = ({
                           placeholder="0.00"
                           required
                         />
-                         <div className="absolute left-3 top-2.5 text-slate-500 pointer-events-none">
-                             <Clock size={16} />
-                         </div>
-                         {/* Removed "+ hours" text that was blocking */}
                       </div>
 
                       {/* Controls (Moved below) */}
