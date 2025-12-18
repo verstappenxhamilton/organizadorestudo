@@ -86,7 +86,20 @@ export const SessionModal = ({
       showToast("Data é obrigatória", "warning");
       return;
     }
-    if (formData.duration <= 0) {
+    // Calculate final duration: use Timer if active and valid, otherwise Form Data
+    let finalDuration = Number(formData.duration) || 0;
+
+    // If timer is running for this session, use its current value
+    if (timerState.subjectId === formData.subjectId && (timerState.isRunning || timerState.accumulatedTime > 0)) {
+        // Use the live accumulated time + current session time if running
+        // We can get this by stopping the timer
+        // But wait, stopTimer returns seconds.
+        // We should stop it here to "commit" the time.
+        const seconds = stopTimer();
+        finalDuration = seconds / 60;
+    }
+
+    if (finalDuration <= 0) {
       showToast("Duração deve ser maior que zero", "warning");
       return;
     }
@@ -94,7 +107,7 @@ export const SessionModal = ({
     const submissionData = {
       ...formData,
       date: sanitizeText(formData.date).slice(0, 20),
-      duration: Math.max(0, Math.round(Number(formData.duration) || 0)),
+      duration: Math.max(0, Math.round(finalDuration)),
       accuracy:
         formData.accuracy === ""
           ? ""
@@ -104,14 +117,14 @@ export const SessionModal = ({
       nextReviewDate: sanitizeText(formData.nextReviewDate).slice(0, 20),
     };
 
-    // If timer was running for this, stop it?
-    // User might want to save and keep timer running? Usually saving implies finishing.
-    // Let's assume we stop if it matches.
-    if (timerState.subjectId === formData.subjectId) {
-        stopTimer();
-    }
+    // Timer is already stopped above if it was running for this subject to get duration
 
     onSubmit(submissionData);
+  };
+
+  const handleStopTimerAndUse = () => {
+     const seconds = stopTimer();
+     setFormData(prev => ({ ...prev, duration: seconds / 60 }));
   };
 
   // Timer Controls logic for this modal
@@ -122,11 +135,6 @@ export const SessionModal = ({
 
   const handlePauseTimer = () => {
      pauseTimer();
-  };
-
-  const handleStopTimerAndUse = () => {
-     const seconds = stopTimer();
-     setFormData(prev => ({ ...prev, duration: seconds / 60 }));
   };
 
   const isTimerForThisSession = timerState.subjectId === formData.subjectId;
@@ -225,17 +233,16 @@ export const SessionModal = ({
               {/* Study Type */}
               <div className="form-group">
                  <label className="form-label text-sm text-gray-400 mb-1 block">Tipo de Estudo</label>
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                 <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: 'theory', label: 'Teoria' },
                       { id: 'questions', label: 'Questões' },
                       { id: 'legislation', label: 'Lei Seca' },
-                      { id: 'review', label: 'Revisão' },
                     ].map(type => (
                        <button
                          key={type.id}
                          type="button"
-                         onClick={() => setFormData(prev => ({ ...prev, studyType: type.id, isReview: type.id === 'review' }))}
+                         onClick={() => setFormData(prev => ({ ...prev, studyType: type.id }))}
                          className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all
                            ${formData.studyType === type.id
                              ? 'bg-blue-600 border-blue-500 text-white'
@@ -282,7 +289,33 @@ export const SessionModal = ({
 
                   {/* Timer Integrated */}
                   <div className="flex flex-col gap-2">
-                      {/* Controls */}
+                      <div className="form-group relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none pl-10"
+                          value={currentDurationInMinutes > 0 ? currentDurationInMinutes.toFixed(2) : ""}
+                          onChange={(e) => {
+                             // Only allow manual edit if timer is NOT running for this session
+                             if (!isTimerForThisSession || (!timerState.isRunning && timerState.accumulatedTime === 0)) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  duration: parseFloat(e.target.value) * 60 || 0,
+                                }));
+                             }
+                          }}
+                          readOnly={isTimerForThisSession && (timerState.isRunning || timerState.accumulatedTime > 0)}
+                          min="0.01"
+                          placeholder="0.00"
+                          required
+                        />
+                         <div className="absolute left-3 top-2.5 text-slate-500 pointer-events-none">
+                             <Clock size={16} />
+                         </div>
+                         {/* Removed "+ hours" text that was blocking */}
+                      </div>
+
+                      {/* Controls (Moved below) */}
                       <div className="flex items-center gap-2">
                          {!isTimerForThisSession || !timerState.isRunning ? (
                              <button
@@ -313,34 +346,6 @@ export const SessionModal = ({
                                 <Square size={16} fill="currentColor" />
                              </button>
                          )}
-                      </div>
-
-                      <div className="form-group relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none pl-10"
-                          value={currentDurationInMinutes > 0 ? currentDurationInMinutes.toFixed(2) : ""}
-                          onChange={(e) => {
-                             // Only allow manual edit if timer is NOT running for this session
-                             if (!isTimerForThisSession || (!timerState.isRunning && timerState.accumulatedTime === 0)) {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  duration: parseFloat(e.target.value) * 60 || 0,
-                                }));
-                             }
-                          }}
-                          readOnly={isTimerForThisSession && (timerState.isRunning || timerState.accumulatedTime > 0)}
-                          min="0.01"
-                          placeholder="0.00"
-                          required
-                        />
-                         <div className="absolute left-3 top-2.5 text-slate-500 pointer-events-none">
-                             <Clock size={16} />
-                         </div>
-                         <div className="absolute right-3 top-2.5 text-slate-500 text-xs pointer-events-none">
-                             horas
-                         </div>
                       </div>
 
                       {isTimerForThisSession && (
@@ -529,7 +534,6 @@ export const SessionModal = ({
             </div>
           </form>
         </div>
-        )}
       </div>
     </div>,
     document.body

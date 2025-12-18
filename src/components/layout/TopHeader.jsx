@@ -10,23 +10,25 @@ export const TopHeader = ({ onMenuClick }) => {
 
   return (
     <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-30">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 flex-1">
         <button
           onClick={onMenuClick}
-          className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0"
         >
           <Menu size={24} />
         </button>
-        <h2 className="text-white font-medium hidden sm:block">
+
+        {/* Global Timer Widget - Left aligned on mobile (next to menu), inline on desktop */}
+        <div className="flex-shrink-0">
+           <GlobalTimerDisplay />
+        </div>
+
+        <h2 className="text-white font-medium hidden sm:block truncate ml-2">
           {activeProfile ? `Focando em: ${activeProfile.name}` : 'Bem-vindo'}
         </h2>
       </div>
 
-      <div className="flex items-center gap-4">
-
-        {/* Global Timer Widget */}
-        <GlobalTimerDisplay />
-
+      <div className="flex items-center gap-4 flex-shrink-0">
         {studyProfiles.length > 0 && (
           <select
             value={activeProfileId || ''}
