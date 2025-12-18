@@ -46,3 +46,4 @@ Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
 8:42:06 PM [vite] hmr update /src/components/SessionModal.jsx, /src/index.css
 8:42:11 PM [vite] hmr update /src/components/SessionModal.jsx, /src/index.css
 8:42:49 PM [vite] hmr update /src/components/layout/TopHeader.jsx, /src/index.css
+9:56:06 PM [vite] hmr update /src/components/StudyCycle.jsx, /src/index.css

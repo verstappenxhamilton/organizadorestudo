@@ -707,8 +707,12 @@ export const StudyCycle = ({
                             >
                                 <option value="" disabled>Selecione um tópico...</option>
                                 {subjectTopics.map(topic => (
-                                    <option key={topic.id} value={topic.id} className="text-slate-900 bg-white">
-                                        {topic.name} {topic.isStudied ? "(Estudado)" : ""}
+                                    <option
+                                      key={topic.id}
+                                      value={topic.id}
+                                      className={topic.isStudied ? "text-emerald-400 font-medium" : "text-slate-900 bg-white"}
+                                    >
+                                        {topic.name} {topic.isStudied ? '✓' : ''}
                                     </option>
                                 ))}
                             </select>
