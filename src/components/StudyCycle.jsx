@@ -484,17 +484,17 @@ export const StudyCycle = ({
 
       {/* --- CONFIGURATION PANEL (Collapsible) --- */}
       {isConfigOpen && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 animate-enter shadow-inner">
-           <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 animate-enter shadow-inner">
+           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-800 pb-4">
               <h4 className="font-semibold text-white flex items-center gap-2">
                  <Settings2 size={18} className="text-indigo-400"/> Configuração de Pesos
               </h4>
-              <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
+              <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 self-end sm:self-auto">
                 <button
                   onClick={() => handleModeChange("edital")}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${weightMode === 'edital' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
                 >
-                  Automático (Edital)
+                  Automático
                 </button>
                 <button
                   onClick={() => handleModeChange("manual")}
@@ -507,23 +507,23 @@ export const StudyCycle = ({
 
            <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
               {subjectsForCycle.map((s) => (
-                <div key={s.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                   <div className="flex items-center gap-3">
+                <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 gap-3">
+                   <div className="flex items-center gap-3 w-full sm:w-auto">
                       <div className="w-3 h-3 rounded-full shadow-[0_0_8px]" style={{ backgroundColor: s.color, boxShadow: `0 0 10px ${s.color}40` }} />
-                      <div>
-                        <p className="font-semibold text-slate-200">{s.name}</p>
-                        <p className="text-xs text-slate-500">Peso atual: {s.weight}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-200 truncate">{s.name}</p>
+                        <p className="text-xs text-slate-500">Peso: {s.weight}</p>
                       </div>
                    </div>
 
-                   <div className="flex items-center gap-4">
+                   <div className="flex items-center justify-between w-full sm:w-auto gap-4">
                       {weightMode === 'manual' && (
-                         <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 border border-slate-700">
+                         <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1 border border-slate-700 flex-1 sm:flex-none">
                             <input
                               type="range" min="0" max="10" step="0.5"
                               value={s.weight}
                               onChange={(e) => handleWeightChange(s.id, e.target.value)}
-                              className="w-24 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                              className="w-full sm:w-24 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                             />
                             <span className="w-8 text-center text-sm font-mono text-slate-300">{s.weight}</span>
                          </div>
@@ -531,7 +531,7 @@ export const StudyCycle = ({
 
                       <button
                         onClick={() => handleIncludeToggle(s.id)}
-                        className={`p-2 rounded-lg transition-colors ${s.include ? 'text-emerald-400 hover:bg-emerald-400/10' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`p-2 rounded-lg transition-colors flex-shrink-0 ${s.include ? 'text-emerald-400 hover:bg-emerald-400/10' : 'text-slate-500 hover:text-slate-300'}`}
                         title={s.include ? "Incluído no ciclo" : "Pausado"}
                       >
                          {s.include ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -544,11 +544,11 @@ export const StudyCycle = ({
            <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-800">
              {weightMode === 'manual' && (
                <button onClick={handleEqualize} className="ui-btn ui-btn-ghost text-xs">
-                 Equalizar Pesos
+                 Equalizar
                </button>
              )}
              <button onClick={handleReset} className="ui-btn ui-btn-ghost text-red-400 hover:bg-red-400/10 text-xs">
-                 <RotateCcw size={14}/> Resetar Configuração
+                 <RotateCcw size={14}/> Resetar
              </button>
            </div>
         </div>
@@ -563,16 +563,18 @@ export const StudyCycle = ({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
 
           {/* LEFT: VISUALIZATION */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 md:p-8 flex flex-col items-center justify-between min-h-[420px] relative overflow-hidden">
+          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-2 md:p-8 flex flex-col items-center justify-between min-h-[500px] relative overflow-hidden">
              {/* Background Decoration */}
              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
 
-             <div className="flex-1 flex flex-col items-center justify-center relative z-10 w-full">
-                <div className="scale-110 sm:scale-125 transition-transform duration-500 my-auto">
+             {/* Chart Container - Flex grow to take available space */}
+             <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 py-4">
+                <div className="scale-100 sm:scale-125 transition-transform duration-500">
                     <svg
                         viewBox="0 0 120 120"
                         className="w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] drop-shadow-2xl"
                         onClick={handleDonutClick}
+                        style={{ maxWidth: '100%', height: 'auto' }}
                     >
                         {/* Track */}
                     <circle cx="60" cy="60" r={donutData.radius} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="16" />
@@ -618,8 +620,8 @@ export const StudyCycle = ({
                  </div>
              </div>
 
-             {/* Moved "Na sequência" here - Pushed to bottom with mt-auto */}
-             <div className="w-full max-w-sm mt-auto relative z-20">
+             {/* "Na sequência" section - Fixed at bottom, no overlap */}
+             <div className="w-full max-w-sm relative z-20 mt-4">
                 <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4 backdrop-blur-md shadow-lg">
                   <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700 flex-shrink-0 shadow-sm">
                       <ArrowRight size={18} />
