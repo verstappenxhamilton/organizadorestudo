@@ -484,8 +484,8 @@ export const StudyCycle = ({
 
       {/* --- CONFIGURATION PANEL (Collapsible) --- */}
       {isConfigOpen && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 animate-enter shadow-inner">
-           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-800 pb-4">
+        <div className="bg-transparent md:bg-slate-900 border-0 md:border md:border-slate-800 rounded-none md:rounded-2xl p-0 md:p-6 animate-enter md:shadow-inner">
+           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 md:mb-6 border-b border-slate-800 pb-4">
               <h4 className="font-semibold text-white flex items-center gap-2">
                  <Settings2 size={18} className="text-indigo-400"/> Configuração de Pesos
               </h4>
@@ -505,13 +505,13 @@ export const StudyCycle = ({
               </div>
            </div>
 
-           <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+           <div className="space-y-3 md:space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
               {subjectsForCycle.map((s) => (
                 <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700/50 gap-3">
                    <div className="flex items-center gap-3 w-full sm:w-auto">
                       <div className="w-3 h-3 rounded-full shadow-[0_0_8px]" style={{ backgroundColor: s.color, boxShadow: `0 0 10px ${s.color}40` }} />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-200 truncate">{s.name}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-200 truncate text-sm md:text-base">{s.name}</p>
                         <p className="text-xs text-slate-500">Peso: {s.weight}</p>
                       </div>
                    </div>

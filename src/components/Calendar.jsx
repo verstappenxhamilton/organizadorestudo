@@ -218,11 +218,15 @@ export const Calendar = ({
       .calendar-card, .agenda-card {
         border-radius: 12px;
         border: 1px solid rgba(148, 163, 184, 0.1);
-        padding: 16px;
+        padding: 10px; /* Reduced padding to maximize horizontal space */
       }
       .cal-title { font-size: 1.1rem; }
-      .day-num { width: 24px; height: 24px; font-size: 0.85rem; }
-      .day-cell { padding: 4px; border-radius: 8px; }
+      /* Ensure grid takes full width and cells are manageable */
+      .cal-grid {
+        gap: 2px;
+      }
+      .day-num { width: 20px; height: 20px; font-size: 0.8rem; margin-bottom: 2px; }
+      .day-cell { padding: 2px; border-radius: 6px; min-height: 32px; }
       .pill { width: 3px; height: 3px; }
 
       .cal-nav { padding: 2px; }
