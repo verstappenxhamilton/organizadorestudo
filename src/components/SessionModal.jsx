@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { sanitizeMultilineText, sanitizeText } from "../utils/helpers";
-import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays, Timer } from "lucide-react";
+import { StudyTimer } from "./widgets/StudyTimer";
 
 export const SessionModal = ({
   isOpen,
@@ -23,10 +24,13 @@ export const SessionModal = ({
     accuracy: "",
     notes: "",
     isReview: false,
+    studyType: "theory", // theory, questions, legislation, review
     nextReviewDate: "",
     reviewDays: null,
     noNextReview: false,
   });
+
+  const [mode, setMode] = useState('manual'); // 'manual' | 'timer'
 
   useEffect(() => {
     const defaultDate = new Date().toISOString().split("T")[0];
@@ -41,6 +45,7 @@ export const SessionModal = ({
         accuracy: editingSession.accuracy || "",
         notes: editingSession.notes || "",
         isReview: editingSession.isReview || false,
+        studyType: editingSession.studyType || "theory",
         nextReviewDate: editingSession.nextReviewDate || "",
         reviewDays: null,
         noNextReview: false,
@@ -57,11 +62,14 @@ export const SessionModal = ({
         accuracy: "",
         notes: "",
         isReview: false,
+        studyType: initialSessionData?.isReview ? "review" : "theory",
         nextReviewDate: "",
         reviewDays: null,
         noNextReview: false,
       });
     }
+    // Reset mode to manual on open, unless we want to persist it or default based on something
+    setMode('manual');
   }, [editingSession, initialSessionData, currentSubjectForSession, isOpen]);
 
   const handleSubmit = (e) => {
@@ -89,10 +97,16 @@ export const SessionModal = ({
           ? ""
           : Math.max(0, Math.min(100, Number(formData.accuracy) || 0)),
       notes: sanitizeMultilineText(formData.notes).slice(0, 2000),
+      studyType: formData.studyType,
       nextReviewDate: sanitizeText(formData.nextReviewDate).slice(0, 20),
     };
 
     onSubmit(submissionData);
+  };
+
+  const handleTimerSave = (seconds) => {
+      setFormData(prev => ({ ...prev, duration: seconds / 60 }));
+      setMode('manual'); // Return to form to finish details
   };
 
   if (!isOpen) return null;
@@ -116,6 +130,34 @@ export const SessionModal = ({
           </button>
         </h2>
 
+        {/* Mode Toggle */}
+        {!editingSession && (
+           <div className="flex bg-slate-800 p-1 rounded-lg mb-4 border border-slate-700 mx-6 mt-4">
+              <button
+                type="button"
+                onClick={() => setMode('manual')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${mode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                 <FileText size={16} /> Registro Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('timer')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${mode === 'timer' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                 <Timer size={16} /> Cronômetro
+              </button>
+           </div>
+        )}
+
+        {mode === 'timer' ? (
+           <div className="p-6">
+              <StudyTimer onSave={handleTimerSave} />
+              <p className="text-center text-xs text-slate-500 mt-4">
+                 O tempo será preenchido automaticamente ao salvar.
+              </p>
+           </div>
+        ) : (
         <div className="modal-content-scroll">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
@@ -180,6 +222,34 @@ export const SessionModal = ({
                   ))}
                 </select>
               </div>
+
+              {/* Study Type */}
+              <div className="form-group">
+                 <label className="form-label text-sm text-gray-400 mb-1 block">Tipo de Estudo</label>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { id: 'theory', label: 'Teoria' },
+                      { id: 'questions', label: 'Questões' },
+                      { id: 'legislation', label: 'Lei Seca' },
+                      { id: 'review', label: 'Revisão' },
+                    ].map(type => (
+                       <button
+                         key={type.id}
+                         type="button"
+                         onClick={() => setFormData(prev => ({ ...prev, studyType: type.id, isReview: type.id === 'review' }))}
+                         className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all
+                           ${formData.studyType === type.id
+                             ? 'bg-blue-600 border-blue-500 text-white'
+                             : 'bg-slate-800 border-slate-600 text-gray-400 hover:border-blue-500'
+                           }
+                         `}
+                       >
+                          {type.label}
+                       </button>
+                    ))}
+                 </div>
+              </div>
+
             </div>
 
             {/* SEÇÃO 2: TEMPO E DATA */}
@@ -410,6 +480,7 @@ export const SessionModal = ({
             </div>
           </form>
         </div>
+        )}
       </div>
     </div>,
     document.body

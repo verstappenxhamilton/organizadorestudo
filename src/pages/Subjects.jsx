@@ -17,6 +17,7 @@ export const Subjects = () => {
     setSyllabusItems,
     activeSessions,
     addOrUpdateSession,
+    deleteSession,
     addOrUpdateSubject,
     deleteSubject,
     showToast,
@@ -73,6 +74,11 @@ export const Subjects = () => {
   const handleDeleteSubject = (id) => {
     deleteSubject(id);
     showToast("Matéria excluída.", "success");
+  };
+
+  const handleDeleteSession = (sessionId) => {
+      deleteSession(sessionId);
+      showToast("Sessão excluída.", "success");
   };
 
   const handleSessionSubmit = (data) => {
@@ -183,6 +189,7 @@ export const Subjects = () => {
         setEditingSession={setEditingSession}
         setIsSessionModalOpen={setIsSessionModalOpen}
         setConfirmationDialog={setConfirmationDialog}
+        handleDeleteSession={handleDeleteSession}
       />
 
       {/* Global Confirmation Dialog */}

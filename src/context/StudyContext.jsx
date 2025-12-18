@@ -49,7 +49,8 @@ export const StudyProvider = ({ children }) => {
       getSubjectStudyTime,
       calculateSubjectProgress,
       showToast,
-      toast
+      toast,
+      deleteSession: studyData.deleteSession
     }}>
       {children}
     </StudyContext.Provider>

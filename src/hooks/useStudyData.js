@@ -151,6 +151,12 @@ export const useStudyData = (showToast) => {
         }
     };
 
+    const deleteSession = (sessionId) => {
+        const newSessions = studySessions.filter((s) => s.id !== sessionId);
+        setStudySessions(newSessions);
+        saveToLocalStorage("sessions", newSessions);
+    };
+
     const updateSyllabusItem = (itemId, updates) => {
         setSyllabusItems((prev) => {
             const updated = prev.map((i) =>
@@ -182,6 +188,7 @@ export const useStudyData = (showToast) => {
         addOrUpdateSubject,
         deleteSubject,
         addOrUpdateSession,
+        deleteSession,
         updateSyllabusItem
     };
 };

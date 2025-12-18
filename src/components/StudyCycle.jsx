@@ -155,7 +155,14 @@ export const StudyCycle = ({
         savedSelected
           ? String(savedSelected)
           : null;
-      setSelectedSubjectId(normalizedSelected);
+
+      // Ensure the saved selected ID is still valid within the current subjects
+      // This prevents "stuck" states if a subject was deleted while selected
+      if (normalizedSelected && subjects.some(s => s.id === normalizedSelected)) {
+         setSelectedSubjectId(normalizedSelected);
+      } else {
+         setSelectedSubjectId(null);
+      }
 
       if (Array.isArray(savedQueue)) {
         setQueue(savedQueue);

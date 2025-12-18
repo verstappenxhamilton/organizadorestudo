@@ -8,7 +8,8 @@ export const SessionHistoryModal = ({
     studySessions,
     setEditingSession,
     setIsSessionModalOpen,
-    setConfirmationDialog
+    setConfirmationDialog,
+    handleDeleteSession: deleteSessionAction
 }) => {
     if (!isOpen || !selectedSubject) return null;
 
@@ -24,28 +25,18 @@ export const SessionHistoryModal = ({
         onClose();
     };
 
-    const handleDeleteSession = (sessionId) => {
+    const handleDeleteClick = (sessionId) => {
         setConfirmationDialog({
             isOpen: true,
             title: 'Confirmar Exclusão',
             message: 'Tem certeza que deseja deletar esta sessão de estudo?',
             onConfirm: () => {
-                // TODO: Implement delete logic
+                if (deleteSessionAction) {
+                    deleteSessionAction(sessionId);
+                }
                 setConfirmationDialog({ isOpen: false, title: '', message: '', onConfirm: () => { } });
             }
         });
-    };
-
-    // Styles
-    const sessionItemStyle = {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '16px',
-        background: 'rgba(30, 41, 59, 0.6)',
-        border: '1px solid rgba(148, 163, 184, 0.2)',
-        borderRadius: '8px',
-        marginBottom: '8px'
     };
 
     return createPortal(
@@ -62,104 +53,83 @@ export const SessionHistoryModal = ({
                     </button>
                 </h2>
 
-                <div className="p-6">
+                <div className="p-6 overflow-y-auto max-h-[70vh]">
                     {/* Estatísticas */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                        gap: '16px',
-                        marginBottom: '24px'
-                    }}>
-                        <div className="stat-card">
-                            <div className="stat-value">{subjectSessions.length}</div>
-                            <div className="stat-label">Total de Sessões</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                            <div className="text-2xl font-bold text-white">{subjectSessions.length}</div>
+                            <div className="text-xs text-slate-400 uppercase font-semibold">Total de Sessões</div>
                         </div>
-                        <div className="stat-card">
-                            <div className="stat-value">{totalTime.toFixed(1)}h</div>
-                            <div className="stat-label">Tempo Total</div>
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                            <div className="text-2xl font-bold text-blue-400">{totalTime.toFixed(1)}h</div>
+                            <div className="text-xs text-slate-400 uppercase font-semibold">Tempo Total</div>
                         </div>
-                        <div className="stat-card">
-                            <div className="stat-value">
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                            <div className="text-2xl font-bold text-emerald-400">
                                 {subjectSessions.length > 0 ? (totalTime / subjectSessions.length).toFixed(1) : 0}h
                             </div>
-                            <div className="stat-label">Média por Sessão</div>
+                            <div className="text-xs text-slate-400 uppercase font-semibold">Média por Sessão</div>
                         </div>
                     </div>
 
                     {/* Lista de Sessões */}
                     <div>
-                        <h3 style={{ color: '#e2e8f0', marginBottom: '16px' }}>
-                            Sessões de Estudo
+                        <h3 className="text-slate-200 font-semibold mb-4 flex items-center gap-2">
+                           Sessões de Estudo
                         </h3>
 
                         {subjectSessions.length === 0 ? (
-                            <div style={{
-                                padding: '40px 20px',
-                                textAlign: 'center',
-                                color: '#94a3b8'
-                            }}>
+                            <div className="py-10 text-center text-slate-500 italic bg-slate-800/30 rounded-xl border border-slate-800">
                                 Nenhuma sessão de estudo registrada para esta matéria.
                             </div>
                         ) : (
-                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                            <div className="space-y-3">
                                 {subjectSessions.map(session => (
-                                    <div key={session.id} style={sessionItemStyle}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                marginBottom: '8px'
-                                            }}>
-                                                <span style={{
-                                                    color: '#f1f5f9',
-                                                    fontWeight: '500',
-                                                    fontSize: '0.9rem'
-                                                }}>
+                                    <div key={session.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:bg-slate-800 transition-colors gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                                                <span className="text-slate-200 font-medium text-sm bg-slate-700/50 px-2 py-1 rounded">
                                                     {new Date(session.date).toLocaleDateString('pt-BR')}
                                                 </span>
-                                                <span style={{
-                                                    color: '#3b82f6',
-                                                    fontWeight: '500',
-                                                    fontSize: '0.9rem'
-                                                }}>
+                                                <span className="text-blue-400 font-bold text-sm flex items-center gap-1">
                                                     {(session.duration / 60).toFixed(1)}h
                                                 </span>
                                                 {Number.isFinite(session.accuracy) && (
-                                                    <span style={{
-                                                        color: '#10b981',
-                                                        fontWeight: '500',
-                                                        fontSize: '0.8rem'
-                                                    }}>
+                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                                                        session.accuracy >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                        session.accuracy >= 60 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                        'bg-red-500/10 text-red-400 border-red-500/20'
+                                                    }`}>
                                                         {session.accuracy}% acerto
+                                                    </span>
+                                                )}
+                                                {session.studyType && (
+                                                    <span className="text-[10px] uppercase tracking-wide font-bold text-slate-500 border border-slate-700 px-1.5 py-0.5 rounded">
+                                                        {session.studyType === 'legislation' ? 'Lei Seca' :
+                                                         session.studyType === 'questions' ? 'Questões' :
+                                                         session.studyType === 'review' ? 'Revisão' : 'Teoria'}
                                                     </span>
                                                 )}
                                             </div>
                                             {session.notes && (
-                                                <div style={{
-                                                    color: '#cbd5e1',
-                                                    fontSize: '0.8rem',
-                                                    fontStyle: 'italic'
-                                                }}>
-                                                    {session.notes}
+                                                <div className="text-slate-400 text-sm italic truncate">
+                                                    "{session.notes}"
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div className="flex items-center gap-2 self-end sm:self-center">
                                             <button
-                                                className="btn btn-warning btn-sm"
+                                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-colors"
                                                 onClick={() => handleEditSession(session)}
-                                                style={{ padding: '4px 8px', fontSize: '0.7rem' }}
                                             >
                                                 Editar
                                             </button>
                                             <button
-                                                className="btn btn-danger btn-sm"
-                                                onClick={() => handleDeleteSession(session.id)}
-                                                style={{ padding: '4px 8px', fontSize: '0.7rem' }}
+                                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                                                onClick={() => handleDeleteClick(session.id)}
                                             >
-                                                Deletar
+                                                Excluir
                                             </button>
                                         </div>
                                     </div>
@@ -169,9 +139,9 @@ export const SessionHistoryModal = ({
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-gray-200 text-right">
+                <div className="p-4 border-t border-slate-800 text-right bg-slate-900/50 rounded-b-xl">
                     <button
-                        className="btn btn-secondary"
+                        className="btn btn-secondary px-6"
                         onClick={onClose}
                     >
                         Fechar
