@@ -46,9 +46,15 @@ export const Dashboard = () => {
   const progress = totalTopics ? Math.round((studiedTopics / totalTopics) * 100) : 0;
 
   const todaySessions = activeSessions.filter(s => {
-    const sessionDate = new Date(s.date).toDateString();
-    const today = new Date().toDateString();
-    return sessionDate === today;
+    // s.date is YYYY-MM-DD string. We need to compare it to today's date in local time.
+    const today = new Date();
+    // Format to YYYY-MM-DD in local time
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localTodayStr = `${year}-${month}-${day}`;
+
+    return s.date === localTodayStr;
   });
   const todayTime = todaySessions.reduce((acc, s) => acc + (s.duration || 0), 0) / 60;
 

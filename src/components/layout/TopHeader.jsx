@@ -22,10 +22,6 @@ export const TopHeader = ({ onMenuClick }) => {
         <div className="flex-shrink-0">
            <GlobalTimerDisplay />
         </div>
-
-        <h2 className="text-white font-medium hidden sm:block truncate ml-2">
-          {activeProfile ? activeProfile.name : 'Bem-vindo'}
-        </h2>
       </div>
 
       <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">

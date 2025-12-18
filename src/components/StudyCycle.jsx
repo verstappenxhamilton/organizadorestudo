@@ -687,9 +687,9 @@ export const StudyCycle = ({
 
                         {/* Dropdown for quick switching */}
                         <div className="relative mt-3 min-w-0">
-                            <div className="relative bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-900 rounded-xl transition-all group/select">
+                            <div className="relative bg-slate-800 border border-slate-600 rounded-lg transition-all group/select">
                                 <select
-                                    className="w-full bg-transparent text-white appearance-none py-3 pl-4 pr-10 text-lg font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 rounded-xl"
+                                    className="w-full bg-slate-800 text-white border-0 rounded-lg py-3 pl-4 pr-10 text-lg font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
                                     value={selectedSubjectId || ""}
                                     onChange={(e) => handleSelectSubject(e.target.value)}
                                     aria-label="Alterar matéria selecionada"
