@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, Bell, User } from 'lucide-react';
 import { useStudyContext } from '../../context/StudyContext';
+import { GlobalTimerDisplay } from './GlobalTimerDisplay';
 
 export const TopHeader = ({ onMenuClick }) => {
   const { studyProfiles, activeProfileId, setActiveProfileId } = useStudyContext();
@@ -22,11 +23,15 @@ export const TopHeader = ({ onMenuClick }) => {
       </div>
 
       <div className="flex items-center gap-4">
+
+        {/* Global Timer Widget */}
+        <GlobalTimerDisplay />
+
         {studyProfiles.length > 0 && (
           <select
             value={activeProfileId || ''}
             onChange={(e) => setActiveProfileId(e.target.value)}
-            className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none focus:border-blue-500"
+            className="hidden md:block bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none focus:border-blue-500"
           >
             {studyProfiles.map(profile => (
               <option key={profile.id} value={profile.id}>{profile.name}</option>

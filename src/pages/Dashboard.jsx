@@ -8,7 +8,7 @@ import {
   BookOpen,
   ArrowRight
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReviewsWidget } from '../components/widgets/ReviewsWidget';
 
 export const Dashboard = () => {
@@ -17,14 +17,10 @@ export const Dashboard = () => {
     activeSubjects,
     activeSessions,
     syllabusItems,
-    studyProfiles,
-    // Actions for widget
-    setIsSessionModalOpen,
-    setCurrentSubjectForSession,
-    // We'll need a way to pass initial data to session modal, likely via context or local state lifted up
-    // But for now, we can just open the modal.
-    setEditingSession // Assuming this exists or we need to add it to context to "prefill"
+    studyProfiles
   } = useStudyContext();
+
+  const navigate = useNavigate();
 
   if (!activeProfileId) {
     return (
@@ -59,46 +55,32 @@ export const Dashboard = () => {
   // Recent Activity (Top 5 sessions)
   const recentSessions = [...activeSessions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
 
-  // Top Subjects by Time
-  const topSubjects = [...activeSubjects]
+  // All subjects with time (Removed slice)
+  const allSubjects = [...activeSubjects]
     .map(s => ({
         ...s,
         hours: activeSessions
             .filter(session => session.subjectId === s.id)
             .reduce((acc, session) => acc + (session.duration || 0), 0) / 60
     }))
-    .sort((a, b) => b.hours - a.hours)
-    .slice(0, 4);
+    .sort((a, b) => b.hours - a.hours);
 
   const handleReviewClick = (item) => {
-    // Open session modal prefilled
-    setCurrentSubjectForSession(item.subjectId);
-    // We need to pass the specific topic ID.
-    // The context might not support passing "initial data" directly to the open modal
-    // without a specific state.
-    // Let's assume we can use a new method or prop in context, OR
-    // since we can't easily change the Context provider right now without a big refactor,
-    // we will check if `setEditingSession` can be used to "mock" a new session with data.
+    // Navigate to subjects with state to open modal
+    navigate('/subjects', {
+        state: {
+            openSessionModal: true,
+            initialData: {
+                subjectId: item.subjectId,
+                syllabusItemId: item.id,
+                isReview: true
+            }
+        }
+    });
+  };
 
-    // Actually, looking at SessionModal usage in SubjectsOverview:
-    // It uses `initialSessionData` prop if passed.
-    // Dashboard doesn't render SessionModal directly, the Layout does (probably).
-    // Wait, where is SessionModal rendered?
-    // It's likely in `App.jsx` or `Layout`. Let's check.
-    // Actually, I can pass it via `setEditingSession` but that implies EDITING an existing one.
-
-    // Plan B: Just open the modal with the subject.
-    // Plan A+ (Instructor): I should allow starting a review directly.
-
-    // For now, let's just open the modal with the subject.
-    // Ideally I would call `setInitialSessionData({ syllabusItemId: item.id, isReview: true })`
-    // but I don't see that in the destructuring above.
-    // I'll add `setInitialSessionData` to the context consumption if available.
-
-    if (typeof setCurrentSubjectForSession === 'function') {
-        setCurrentSubjectForSession(item.subjectId);
-        setIsSessionModalOpen(true);
-    }
+  const handleSubjectClick = (subjectId) => {
+      navigate('/subjects', { state: { expandSubjectId: subjectId } });
   };
 
   return (
@@ -155,10 +137,14 @@ export const Dashboard = () => {
                 </Link>
             </div>
 
-            <div className="space-y-4">
-                {topSubjects.length > 0 ? (
-                    topSubjects.map(s => (
-                        <div key={s.id} className="group">
+            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {allSubjects.length > 0 ? (
+                    allSubjects.map(s => (
+                        <div
+                            key={s.id}
+                            className="group cursor-pointer hover:bg-slate-800/50 p-2 rounded-lg transition-colors"
+                            onClick={() => handleSubjectClick(s.id)}
+                        >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-slate-300 font-medium">{s.name}</span>
                                 <span className="text-slate-400 text-sm">{s.hours.toFixed(1)}h</span>

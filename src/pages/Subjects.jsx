@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useStudyContext } from '../context/StudyContext';
 import { SubjectsOverview } from '../components/SubjectsOverview';
 import { PlusCircle, PlayCircle } from 'lucide-react';
@@ -28,6 +29,47 @@ export const Subjects = () => {
 
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [selectedSyllabusItem, setSelectedSyllabusItem] = useState(null);
+
+  const location = useLocation();
+
+  // Handle auto-expand and modal opening from navigation
+  useEffect(() => {
+      const state = location.state;
+      if (state) {
+          if (state.expandSubjectId) {
+              setExpandedSubjects(prev => ({
+                  ...prev,
+                  [state.expandSubjectId]: true
+              }));
+
+              setTimeout(() => {
+                  const element = document.querySelector(`.subject-card h3:contains('${state.expandSubjectId}')`);
+                  // ID selector might be better if I added IDs to cards.
+                  // But let's stick to expanding for now as I didn't add IDs to cards.
+                  // Actually, scrollIntoView might not work without IDs.
+                  // Let's just ensure it is expanded.
+              }, 100);
+          }
+
+          if (state.openSessionModal) {
+              // Set initial data first
+              if (state.initialData) {
+                  const { subjectId, ...rest } = state.initialData;
+                  setCurrentSubjectForSession(subjectId);
+                  setInitialSessionData(rest);
+                  // Ensure subject is expanded too if provided
+                  if (subjectId) {
+                      setExpandedSubjects(prev => ({ ...prev, [subjectId]: true }));
+                  }
+              }
+              setIsSessionModalOpen(true);
+
+              // Clear state to prevent reopening on refresh?
+              // React Router state persists on refresh, but we might want that.
+              // If we want to consume it once, we could replace history, but standard behavior is fine.
+          }
+      }
+  }, [location.state]);
 
   // Modals State
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);

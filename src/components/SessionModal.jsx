@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { sanitizeMultilineText, sanitizeText } from "../utils/helpers";
-import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays, Timer } from "lucide-react";
-import { StudyTimer } from "./widgets/StudyTimer";
+import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays, Timer, Play, Pause, Square } from "lucide-react";
+import { useStudyContext } from "../context/StudyContext";
 
 export const SessionModal = ({
   isOpen,
@@ -15,6 +15,8 @@ export const SessionModal = ({
   onSubmit,
   showToast,
 }) => {
+  const { timerState, elapsedSeconds, startTimer, pauseTimer, resumeTimer, stopTimer, discardTimer } = useStudyContext();
+
   const [formData, setFormData] = useState({
     subjectId: "",
     date: "",
@@ -30,7 +32,10 @@ export const SessionModal = ({
     noNextReview: false,
   });
 
-  const [mode, setMode] = useState('manual'); // 'manual' | 'timer'
+  // Derived state to check if global timer is active for this session
+  const isGlobalTimerActive = timerState.isRunning || (timerState.accumulatedTime > 0 && !timerState.subjectId) || (timerState.subjectId === formData.subjectId);
+  // Actually, simplest check: is there a timer running?
+  // User Requirement: "que haja um pequeno Cronômetro que liberará tão logo o usuário sete ao menos uma materia"
 
   useEffect(() => {
     const defaultDate = new Date().toISOString().split("T")[0];
@@ -68,8 +73,6 @@ export const SessionModal = ({
         noNextReview: false,
       });
     }
-    // Reset mode to manual on open, unless we want to persist it or default based on something
-    setMode('manual');
   }, [editingSession, initialSessionData, currentSubjectForSession, isOpen]);
 
   const handleSubmit = (e) => {
@@ -101,13 +104,37 @@ export const SessionModal = ({
       nextReviewDate: sanitizeText(formData.nextReviewDate).slice(0, 20),
     };
 
+    // If timer was running for this, stop it?
+    // User might want to save and keep timer running? Usually saving implies finishing.
+    // Let's assume we stop if it matches.
+    if (timerState.subjectId === formData.subjectId) {
+        stopTimer();
+    }
+
     onSubmit(submissionData);
   };
 
-  const handleTimerSave = (seconds) => {
-      setFormData(prev => ({ ...prev, duration: seconds / 60 }));
-      setMode('manual'); // Return to form to finish details
+  // Timer Controls logic for this modal
+  const handleStartTimer = () => {
+     if (!formData.subjectId) return;
+     startTimer(formData.subjectId, formData.syllabusItemId || null);
   };
+
+  const handlePauseTimer = () => {
+     pauseTimer();
+  };
+
+  const handleStopTimerAndUse = () => {
+     const seconds = stopTimer();
+     setFormData(prev => ({ ...prev, duration: seconds / 60 }));
+  };
+
+  const isTimerForThisSession = timerState.subjectId === formData.subjectId;
+  const showTimerControls = !!formData.subjectId;
+
+  const currentDurationInMinutes = isTimerForThisSession && (timerState.isRunning || timerState.accumulatedTime > 0)
+     ? (elapsedSeconds / 60)
+     : (formData.duration / 60);
 
   if (!isOpen) return null;
 
@@ -130,34 +157,6 @@ export const SessionModal = ({
           </button>
         </h2>
 
-        {/* Mode Toggle */}
-        {!editingSession && (
-           <div className="flex bg-slate-800 p-1 rounded-lg mb-4 border border-slate-700 mx-6 mt-4">
-              <button
-                type="button"
-                onClick={() => setMode('manual')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${mode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                 <FileText size={16} /> Registro Manual
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('timer')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${mode === 'timer' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                 <Timer size={16} /> Cronômetro
-              </button>
-           </div>
-        )}
-
-        {mode === 'timer' ? (
-           <div className="p-6">
-              <StudyTimer onSave={handleTimerSave} />
-              <p className="text-center text-xs text-slate-500 mt-4">
-                 O tempo será preenchido automaticamente ao salvar.
-              </p>
-           </div>
-        ) : (
         <div className="modal-content-scroll">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
@@ -280,25 +279,75 @@ export const SessionModal = ({
                     <Clock size={18} />
                     <h3 className="font-semibold text-sm uppercase tracking-wide">Duração</h3>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label text-sm text-gray-400 mb-1 block">
-                      Horas Líquidas <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none"
-                      value={formData.duration > 0 ? formData.duration / 60 : ""}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          duration: parseFloat(e.target.value) * 60 || 0,
-                        }))
-                      }
-                      min="0.1"
-                      placeholder="Ex: 1.5"
-                      required
-                    />
+
+                  {/* Timer Integrated */}
+                  <div className="flex flex-col gap-2">
+                      {/* Controls */}
+                      <div className="flex items-center gap-2">
+                         {!isTimerForThisSession || !timerState.isRunning ? (
+                             <button
+                                type="button"
+                                disabled={!showTimerControls || (timerState.isRunning && !isTimerForThisSession)}
+                                onClick={handleStartTimer}
+                                className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white flex-1 flex items-center justify-center gap-2 text-sm font-semibold"
+                             >
+                                <Play size={16} /> Iniciar
+                             </button>
+                         ) : (
+                             <button
+                                type="button"
+                                onClick={handlePauseTimer}
+                                className="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white flex-1 flex items-center justify-center gap-2 text-sm font-semibold"
+                             >
+                                <Pause size={16} /> Pausar
+                             </button>
+                         )}
+
+                         {isTimerForThisSession && (timerState.accumulatedTime > 0 || timerState.isRunning) && (
+                             <button
+                                type="button"
+                                onClick={handleStopTimerAndUse}
+                                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200"
+                                title="Parar e Usar Tempo"
+                             >
+                                <Square size={16} fill="currentColor" />
+                             </button>
+                         )}
+                      </div>
+
+                      <div className="form-group relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none pl-10"
+                          value={currentDurationInMinutes > 0 ? currentDurationInMinutes.toFixed(2) : ""}
+                          onChange={(e) => {
+                             // Only allow manual edit if timer is NOT running for this session
+                             if (!isTimerForThisSession || (!timerState.isRunning && timerState.accumulatedTime === 0)) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  duration: parseFloat(e.target.value) * 60 || 0,
+                                }));
+                             }
+                          }}
+                          readOnly={isTimerForThisSession && (timerState.isRunning || timerState.accumulatedTime > 0)}
+                          min="0.01"
+                          placeholder="0.00"
+                          required
+                        />
+                         <div className="absolute left-3 top-2.5 text-slate-500 pointer-events-none">
+                             <Clock size={16} />
+                         </div>
+                         <div className="absolute right-3 top-2.5 text-slate-500 text-xs pointer-events-none">
+                             horas
+                         </div>
+                      </div>
+
+                      {isTimerForThisSession && (
+                          <div className="text-xs text-emerald-400 text-center animate-pulse">
+                              {timerState.isRunning ? "Cronômetro ativo..." : (timerState.accumulatedTime > 0 ? "Cronômetro pausado" : "")}
+                          </div>
+                      )}
                   </div>
                </div>
             </div>
