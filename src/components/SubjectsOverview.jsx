@@ -55,6 +55,12 @@ const STYLES = `
     position: relative;
   }
 
+  /* Closed State styling enhancement */
+  .subject-card:not(.expanded):hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(255,255,255,0.1);
+  }
+
   .subject-card:hover {
     border-color: var(--border-focus);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -64,13 +70,19 @@ const STYLES = `
   .card-header {
     padding: 16px;
     cursor: pointer;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
+    background: transparent; /* Cleaner look */
+  }
+
+  /* Add separation line if content follows */
+  .expanded .card-header {
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0,0,0,0.2);
   }
 
   .header-main {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center; /* Better alignment */
     gap: 12px;
     margin-bottom: 12px;
   }
@@ -366,13 +378,18 @@ const STYLES = `
       border-left: none;
       border-right: none;
       border-top: none;
-      border-bottom: 1px solid rgba(255,255,255,0.1); /* Single clean line */
-      background: rgba(30, 41, 59, 0.4); /* Slightly transparent on mobile */
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: var(--bg-card); /* Solid background for legibility */
       margin-bottom: 0;
     }
     
+    /* Better distinction for closed cards on mobile */
+    .subject-card:not(.expanded) {
+        background: rgba(30, 41, 59, 0.6);
+    }
+
     .card-header {
-      padding: 16px 12px;
+      padding: 14px 16px; /* Slightly more side padding, less vertical */
     }
 
     .header-main {
@@ -728,7 +745,7 @@ const SubjectCard = React.memo(({
   const hours = getSubjectStudyTime(subject.id);
 
   return (
-    <div className="subject-card">
+    <div className={`subject-card ${isExpanded ? 'expanded' : ''}`}>
       <div className="card-header" onClick={() => onToggleExpand(subject.id)}>
         <div className="header-main">
           <div className="header-title-group">
@@ -744,11 +761,11 @@ const SubjectCard = React.memo(({
         </div>
 
         <div className="stats-row">
-          <div className="stat-pill">Progresso: {progress.toFixed(0)}%</div>
+          <div className="stat-pill" title="Progresso Geral">{progress.toFixed(0)}%</div>
           <div className="stat-pill">
-            {studiedItems.length}/{subjectItems.length} tópicos
+            {studiedItems.length}/{subjectItems.length} <span className="hidden sm:inline">tópicos</span>
           </div>
-          <div className="stat-pill">Média: {avgAccuracy.toFixed(0)}%</div>
+          <div className="stat-pill hidden xs:block">Média: {avgAccuracy.toFixed(0)}%</div>
           <div className="stat-pill">{hours.toFixed(1)}h</div>
         </div>
       </div>

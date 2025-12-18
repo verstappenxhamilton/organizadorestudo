@@ -71,17 +71,17 @@ export const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard
           icon={Clock}
           title="Tempo Total"
           value={`${totalStudyTime.toFixed(1)}h`}
-          trend="Horas acumuladas"
+          trend="Horas"
           color="blue"
         />
         <StatCard
           icon={Target}
-          title="Progresso Geral"
+          title="Progresso"
           value={`${progress}%`}
           trend={`${studiedTopics}/${totalTopics} tópicos`}
           color="violet"
@@ -95,9 +95,9 @@ export const Dashboard = () => {
         />
         <StatCard
           icon={TrendingUp}
-          title="Matérias Ativas"
+          title="Ativas"
           value={activeSubjects.length}
-          trend="No ciclo atual"
+          trend="Matérias"
           color="amber"
         />
       </div>
@@ -184,16 +184,16 @@ const StatCard = ({ icon: Icon, title, value, trend, color }) => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 rounded-lg ${colors[color]}`}>
-          <Icon size={20} />
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 md:p-5 hover:border-slate-700 transition-colors">
+      <div className="flex items-start justify-between mb-3 md:mb-4">
+        <div className={`p-2 md:p-3 rounded-lg ${colors[color]}`}>
+          <Icon className="w-5 h-5 md:w-6 md:h-6" />
         </div>
       </div>
       <div>
-        <p className="text-slate-400 text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-white mb-1">{value}</h3>
-        <p className="text-slate-500 text-xs">{trend}</p>
+        <p className="text-slate-400 text-xs md:text-sm font-medium mb-1 truncate">{title}</p>
+        <h3 className="text-xl md:text-2xl font-bold text-white mb-0.5 md:mb-1">{value}</h3>
+        <p className="text-slate-500 text-[10px] md:text-xs truncate">{trend}</p>
       </div>
     </div>
   );
