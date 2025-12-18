@@ -6,7 +6,6 @@ import {
   SlidersHorizontal,
   Zap,
   CheckCircle2,
-  SkipForward,
   PlayCircle,
   BookOpen,
   ArrowRight,
@@ -99,6 +98,10 @@ export const StudyCycle = ({
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [skippedTopicIds, setSkippedTopicIds] = useState([]);
+
+  // New States for UI requests
+  const [hasInteractedWithChart, setHasInteractedWithChart] = useState(false);
+  const [overrideTopicId, setOverrideTopicId] = useState(null);
 
   // Persistent Queue State
   const [queue, setQueue] = useState([]);
@@ -268,12 +271,32 @@ export const StudyCycle = ({
 
   useEffect(() => {
     setSkippedTopicIds([]);
+    setOverrideTopicId(null); // Reset manual topic selection
   }, [normalizedSelectedSubjectId]);
 
-  const nextTopic = selectedSubject
+  const suggestedTopic = selectedSubject
     ? pickNextTopicForSubject(syllabusItems, selectedSubject.id, skippedTopicIds)
     : null;
-  const hasActionTarget = Boolean(selectedSubject && nextTopic);
+
+  // Determine effective topic (Manual override > Algorithm Suggestion)
+  const effectiveTopicId = overrideTopicId || suggestedTopic?.id;
+  const effectiveTopic = useMemo(() => {
+      return syllabusItems.find(t => t.id === effectiveTopicId) || null;
+  }, [effectiveTopicId, syllabusItems]);
+
+  const hasActionTarget = Boolean(selectedSubject && effectiveTopic);
+
+  // Get all topics for the selected subject (for the dropdown)
+  const subjectTopics = useMemo(() => {
+      if (!selectedSubject) return [];
+      return syllabusItems
+          .filter(t => t.subjectId === selectedSubject.id)
+          .sort((a, b) => {
+              // Simple sort: unstudied first, then by name/order
+              if (a.isStudied === b.isStudied) return 0; // Maintain original order roughly
+              return a.isStudied ? 1 : -1;
+          });
+  }, [selectedSubject, syllabusItems]);
 
   const donutData = useMemo(() => buildDonutData(activeSubjects), [activeSubjects]);
   const lastAdvanceNonceRef = useRef(advanceNonce);
@@ -348,18 +371,8 @@ export const StudyCycle = ({
     setSelectedSubjectId(nextSubject.id);
   };
 
-  const handleSkipTopic = () => {
-    if (!selectedSubject?.id || !nextTopic?.id) return;
-    setSkippedTopicIds((prev) => {
-      const next = prev.includes(nextTopic.id) ? prev : [...prev, nextTopic.id];
-      const total = syllabusItems.filter(
-        (i) => String(i?.subjectId ?? "") === String(selectedSubject.id),
-      ).length;
-      return total > 0 && next.length >= total ? [] : next;
-    });
-  };
-
   const handleDonutClick = (e) => {
+    setHasInteractedWithChart(true);
     const segments = donutData.segments;
     if (!Array.isArray(segments) || segments.length === 0) return;
 
@@ -426,12 +439,12 @@ export const StudyCycle = ({
 
   const handleStart = () => {
     if (!selectedSubject) return;
-    onStartSession?.(selectedSubject.id, nextTopic?.id);
+    onStartSession?.(selectedSubject.id, effectiveTopic?.id);
   };
 
   const handleMarkDone = () => {
-    if (!selectedSubject || !nextTopic?.id) return;
-    onMarkTopicStudied?.(nextTopic.id);
+    if (!selectedSubject || !effectiveTopic?.id) return;
+    onMarkTopicStudied?.(effectiveTopic.id);
     handlePickNextFromQueue();
   };
 
@@ -554,7 +567,7 @@ export const StudyCycle = ({
              {/* Background Decoration */}
              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
 
-             <div className="relative z-10 scale-110 sm:scale-125 transition-transform duration-500">
+             <div className="relative z-10 scale-110 sm:scale-125 transition-transform duration-500 mb-8">
                 <svg
                     viewBox="0 0 120 120"
                     className="w-[280px] h-[280px] drop-shadow-2xl"
@@ -581,6 +594,7 @@ export const StudyCycle = ({
                               className={`transition-all duration-300 cursor-pointer hover:opacity-100 ${isSelected ? 'opacity-100' : 'opacity-80 hover:stroke-[17px]'}`}
                               onClick={(e) => {
                                  e.stopPropagation();
+                                 setHasInteractedWithChart(true);
                                  handleSelectSubject(seg.id);
                               }}
                             >
@@ -602,10 +616,27 @@ export const StudyCycle = ({
                 </div>
              </div>
 
-             <p className="mt-12 text-slate-500 text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-slate-600 animate-pulse"/>
-                Clique nos segmentos para navegar
-             </p>
+             {/* Moved "Na sequência" here */}
+             <div className="w-full max-w-sm">
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4 backdrop-blur-sm">
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700 flex-shrink-0">
+                      <ArrowRight size={18} />
+                  </div>
+                  <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Na sequência</p>
+                      <p className="text-sm text-slate-300 font-semibold truncate">
+                          {nextSubject?.name || "..."}
+                      </p>
+                  </div>
+                </div>
+             </div>
+
+             {!hasInteractedWithChart && (
+               <p className="mt-8 text-slate-500 text-sm flex items-center gap-2 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500"/>
+                  Clique nos segmentos para navegar
+               </p>
+             )}
           </div>
 
           {/* RIGHT: CONTROLLER CARD */}
@@ -622,7 +653,7 @@ export const StudyCycle = ({
 
                 <div className="mb-6 relative z-10">
                    <div className="flex justify-between items-start">
-                      <div>
+                      <div className="w-full">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border border-slate-700 px-2 py-1 rounded-md bg-slate-900/50">
                             Matéria da Vez
                         </span>
@@ -649,54 +680,56 @@ export const StudyCycle = ({
                         </div>
                       </div>
 
-                      {/* Subject Icon/Initial */}
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold text-white shadow-lg"
-                        style={{ background: selectedSubject?.color || '#334155' }}
-                      >
-                         {selectedSubject?.name?.charAt(0) || "?"}
-                      </div>
+                      {/* Removed the Initial Letter Icon as requested */}
                    </div>
                 </div>
 
-                {/* NEXT TOPIC BOX */}
+                {/* TOPIC SELECTOR BOX (Replaced Static Display) */}
                 <div className="bg-slate-900/60 rounded-xl p-4 mb-6 border border-slate-700/50 relative overflow-hidden">
                     <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
                             <BookOpen size={14} /> Sugestão do Edital
                         </span>
-                        {nextTopic?.id && (
-                            <button
-                                onClick={handleSkipTopic}
-                                className="text-[10px] font-medium text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded border border-slate-700 transition-colors"
-                            >
-                                Pular Sugestão
-                            </button>
-                        )}
                     </div>
 
                     <div className="relative z-10">
-                        <p className="text-slate-200 font-medium leading-relaxed">
-                            {nextTopic ? (
-                                <>
-                                  {nextTopic.name}
-                                  {nextTopic.isStudied && (
-                                     <span className="ml-2 inline-flex items-center text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded border border-emerald-400/20">
-                                        <CheckCircle2 size={10} className="mr-1"/> Revisão
-                                     </span>
-                                  )}
-                                </>
-                            ) : (
-                                <span className="text-slate-500 italic">Nenhum tópico pendente encontrado.</span>
-                            )}
-                        </p>
+                         {/* This Select mimics the behavior of the Subject select but for Topics */}
+                         <div className="relative">
+                            <select
+                                className="w-full bg-slate-800 text-white border border-slate-600 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 appearance-none"
+                                value={effectiveTopicId || ""}
+                                onChange={(e) => setOverrideTopicId(e.target.value)}
+                                disabled={!selectedSubject}
+                                style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                                    backgroundPosition: `right 0.5rem center`,
+                                    backgroundRepeat: `no-repeat`,
+                                    backgroundSize: `1.5em 1.5em`,
+                                    paddingRight: `2.5rem`
+                                }}
+                            >
+                                <option value="" disabled>Selecione um tópico...</option>
+                                {subjectTopics.map(topic => (
+                                    <option key={topic.id} value={topic.id} className="text-slate-900 bg-white">
+                                        {topic.name} {topic.isStudied ? "(Estudado)" : ""}
+                                    </option>
+                                ))}
+                            </select>
+                         </div>
+
+                         {/* Info about why this is selected if it is the suggestion */}
+                         {!overrideTopicId && suggestedTopic && (
+                             <p className="text-[10px] text-slate-500 mt-2">
+                                 Sugerido automaticamente pelo algoritmo.
+                             </p>
+                         )}
                     </div>
                 </div>
 
                 {/* MAIN ACTION BUTTON */}
                 <button
                     onClick={handleStart}
-                    disabled={!selectedSubject}
+                    disabled={!hasActionTarget}
                     className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-[0_0_20px_-5px_rgba(99,102,241,0.4)] transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 mb-3"
                 >
                     <PlayCircle size={24} className="fill-white/20" />
@@ -721,19 +754,6 @@ export const StudyCycle = ({
                         <Zap size={16} />
                         Avançar Ciclo
                     </button>
-                </div>
-             </div>
-
-             {/* UP NEXT INDICATOR */}
-             <div className="bg-slate-900/30 rounded-xl p-4 border border-slate-800 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700">
-                    <ArrowRight size={18} />
-                </div>
-                <div>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Na sequência</p>
-                    <p className="text-sm text-slate-300 font-semibold truncate max-w-[200px]">
-                        {nextSubject?.name || "..."}
-                    </p>
                 </div>
              </div>
 
