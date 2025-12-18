@@ -24,7 +24,7 @@ export const TopHeader = ({ onMenuClick }) => {
         </div>
 
         <h2 className="text-white font-medium hidden sm:block truncate ml-2">
-          {activeProfile ? `Focando em: ${activeProfile.name}` : 'Bem-vindo'}
+          {activeProfile ? activeProfile.name : 'Bem-vindo'}
         </h2>
       </div>
 

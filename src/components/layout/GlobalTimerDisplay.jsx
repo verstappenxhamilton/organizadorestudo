@@ -67,7 +67,7 @@ export const GlobalTimerDisplay = () => {
                     <span className="text-white font-sans font-bold tracking-wider text-xs md:text-base tabular-nums">
                         {formatTime(elapsedSeconds)}
                     </span>
-                    <span className="text-[10px] md:text-xs text-slate-400 max-w-[80px] md:max-w-[150px] truncate hidden sm:block">
+                    <span className="text-[10px] md:text-xs text-slate-400 max-w-[80px] md:max-w-[150px] truncate">
                         {subject ? subject.name : 'Matéria'}
                     </span>
                 </div>
