@@ -28,12 +28,12 @@ export const TopHeader = ({ onMenuClick }) => {
         </h2>
       </div>
 
-      <div className="flex items-center gap-4 flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
         {studyProfiles.length > 0 && (
           <select
             value={activeProfileId || ''}
             onChange={(e) => setActiveProfileId(e.target.value)}
-            className="hidden md:block bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none focus:border-blue-500"
+            className="bg-slate-800 text-slate-200 text-sm rounded-lg px-2 py-1.5 md:px-3 md:py-2 border border-slate-700 outline-none focus:border-blue-500 max-w-[100px] xs:max-w-[140px] md:max-w-none truncate"
           >
             {studyProfiles.map(profile => (
               <option key={profile.id} value={profile.id}>{profile.name}</option>
