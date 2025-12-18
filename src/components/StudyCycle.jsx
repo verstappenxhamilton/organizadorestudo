@@ -10,7 +10,8 @@ import {
   BookOpen,
   ArrowRight,
   Settings2,
-  ChevronDown
+  ChevronDown,
+  Info
 } from "lucide-react";
 import {
   buildSubjectsForCycle,
@@ -101,6 +102,7 @@ export const StudyCycle = ({
 
   // New States for UI requests
   const [hasInteractedWithChart, setHasInteractedWithChart] = useState(false);
+  const [showHelpText, setShowHelpText] = useState(false);
   const [overrideTopicId, setOverrideTopicId] = useState(null);
 
   // Persistent Queue State
@@ -570,9 +572,25 @@ export const StudyCycle = ({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
 
           {/* LEFT: VISUALIZATION */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-2 md:p-8 flex flex-col items-center justify-between min-h-[500px] relative overflow-hidden">
+          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-2 md:p-8 flex flex-col items-center justify-between min-h-[500px] relative overflow-hidden group/visualization">
              {/* Background Decoration */}
              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+
+             {/* Info Button */}
+             <div className="absolute top-4 right-4 z-30">
+                <button
+                  onClick={() => setShowHelpText(!showHelpText)}
+                  className="p-1.5 rounded-full bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors border border-slate-700 shadow-sm"
+                  title="Ajuda"
+                >
+                   <Info size={16} />
+                </button>
+                {showHelpText && (
+                   <div className="absolute top-full right-0 mt-2 w-48 bg-slate-800 border border-slate-700 p-3 rounded-xl shadow-xl z-40 text-xs text-slate-300 animate-enter">
+                      <p>Clique nos segmentos para navegar entre as matérias do ciclo.</p>
+                   </div>
+                )}
+             </div>
 
              {/* Chart Container - Flex grow to take available space */}
              <div className="flex-1 w-full flex flex-col items-center justify-center relative z-10 py-4">
@@ -630,9 +648,14 @@ export const StudyCycle = ({
              {/* "Na sequência" section - Fixed at bottom, no overlap */}
              <div className="w-full max-w-sm relative z-20 mt-4">
                 <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4 backdrop-blur-md shadow-lg">
-                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700 flex-shrink-0 shadow-sm">
+                  <button
+                    onClick={handlePickNextFromQueue}
+                    disabled={donutData.segments.length < 2}
+                    className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700 border border-slate-700 flex-shrink-0 shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Avançar para esta matéria"
+                  >
                       <ArrowRight size={18} />
-                  </div>
+                  </button>
                   <div className="min-w-0 flex-1">
                       <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Na sequência</p>
                       <p className="text-sm text-slate-300 font-semibold truncate">
@@ -640,13 +663,6 @@ export const StudyCycle = ({
                       </p>
                   </div>
                 </div>
-
-                {!hasInteractedWithChart && (
-                   <p className="mt-4 text-slate-500 text-xs text-center flex items-center justify-center gap-2 animate-pulse">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"/>
-                      Clique nos segmentos para navegar
-                   </p>
-                )}
              </div>
           </div>
 
