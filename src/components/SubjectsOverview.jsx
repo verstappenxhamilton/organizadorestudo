@@ -784,12 +784,22 @@ const SubjectCard = React.memo(({
         </div>
 
         <div className="stats-row">
-          <div className="stat-pill" title="Progresso Geral">{progress.toFixed(0)}%</div>
-          <div className="stat-pill">
-            {studiedItems.length}/{subjectItems.length} <span className="hidden sm:inline">tópicos</span>
+          <div className="stat-pill" title="Progresso Geral">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Progresso:</span>
+             {progress.toFixed(0)}%
           </div>
-          <div className="stat-pill hidden xs:block">Média: {avgAccuracy.toFixed(0)}%</div>
-          <div className="stat-pill">{hours.toFixed(1)}h</div>
+          <div className="stat-pill">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Tópicos:</span>
+             {studiedItems.length}/{subjectItems.length}
+          </div>
+          <div className="stat-pill hidden xs:flex">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Média:</span>
+             {avgAccuracy.toFixed(0)}%
+          </div>
+          <div className="stat-pill">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Tempo:</span>
+             {hours.toFixed(1)}h
+          </div>
         </div>
       </div>
 

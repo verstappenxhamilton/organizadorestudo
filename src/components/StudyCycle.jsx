@@ -563,17 +563,18 @@ export const StudyCycle = ({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
 
           {/* LEFT: VISUALIZATION */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden">
+          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 md:p-8 flex flex-col items-center justify-between min-h-[420px] relative overflow-hidden">
              {/* Background Decoration */}
              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
 
-             <div className="relative z-10 scale-110 sm:scale-125 transition-transform duration-500 mb-8">
-                <svg
-                    viewBox="0 0 120 120"
-                    className="w-[280px] h-[280px] drop-shadow-2xl"
-                    onClick={handleDonutClick}
-                >
-                    {/* Track */}
+             <div className="flex-1 flex flex-col items-center justify-center relative z-10 w-full">
+                <div className="scale-110 sm:scale-125 transition-transform duration-500 my-auto">
+                    <svg
+                        viewBox="0 0 120 120"
+                        className="w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] drop-shadow-2xl"
+                        onClick={handleDonutClick}
+                    >
+                        {/* Track */}
                     <circle cx="60" cy="60" r={donutData.radius} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="16" />
 
                     {/* Segments */}
@@ -605,38 +606,39 @@ export const StudyCycle = ({
                     </g>
                 </svg>
 
-                {/* Center Content */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <div className="text-center max-w-[140px]">
-                       <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 block">Atual</span>
-                       <p className="text-lg font-bold text-white leading-tight line-clamp-2">
-                          {selectedSubject?.name || "Selecione"}
-                       </p>
+                    {/* Center Content */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
+                        <div className="text-center max-w-[160px] px-2">
+                           <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 block">Atual</span>
+                           <p className="text-base sm:text-lg font-bold text-white leading-tight break-words">
+                              {selectedSubject?.name || "Selecione"}
+                           </p>
+                        </div>
                     </div>
-                </div>
+                 </div>
              </div>
 
-             {/* Moved "Na sequência" here */}
-             <div className="w-full max-w-sm">
-                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4 backdrop-blur-sm">
-                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700 flex-shrink-0">
+             {/* Moved "Na sequência" here - Pushed to bottom with mt-auto */}
+             <div className="w-full max-w-sm mt-auto relative z-20">
+                <div className="bg-slate-900/60 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4 backdrop-blur-md shadow-lg">
+                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700 flex-shrink-0 shadow-sm">
                       <ArrowRight size={18} />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                       <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Na sequência</p>
                       <p className="text-sm text-slate-300 font-semibold truncate">
                           {nextSubject?.name || "..."}
                       </p>
                   </div>
                 </div>
-             </div>
 
-             {!hasInteractedWithChart && (
-               <p className="mt-8 text-slate-500 text-sm flex items-center gap-2 animate-pulse">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500"/>
-                  Clique nos segmentos para navegar
-               </p>
-             )}
+                {!hasInteractedWithChart && (
+                   <p className="mt-4 text-slate-500 text-xs text-center flex items-center justify-center gap-2 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"/>
+                      Clique nos segmentos para navegar
+                   </p>
+                )}
+             </div>
           </div>
 
           {/* RIGHT: CONTROLLER CARD */}
@@ -659,28 +661,22 @@ export const StudyCycle = ({
                         </span>
 
                         {/* Dropdown for quick switching */}
-                        <div className="relative mt-3 group-hover:bg-slate-700/30 p-2 -ml-2 rounded-lg transition-colors min-w-0">
-                            {/* Visible Text Layer */}
-                            <div className="flex items-start justify-between gap-2 pr-6">
-                                <h2 className="text-2xl font-bold text-white leading-tight break-words">
-                                    {selectedSubject?.name}
-                                </h2>
-                                <ChevronDown className="text-slate-500 flex-shrink-0 mt-1" size={20} />
+                        <div className="relative mt-3 min-w-0">
+                            <div className="relative bg-slate-900/50 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-900 rounded-xl transition-all group/select">
+                                <select
+                                    className="w-full bg-transparent text-white appearance-none py-3 pl-4 pr-10 text-lg font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/50 rounded-xl"
+                                    value={selectedSubjectId || ""}
+                                    onChange={(e) => handleSelectSubject(e.target.value)}
+                                    aria-label="Alterar matéria selecionada"
+                                >
+                                    {activeSubjects.map(s => <option key={s.id} value={s.id} className="text-slate-900 bg-white">{s.name}</option>)}
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 group-hover/select:text-white transition-colors">
+                                    <ChevronDown size={20} />
+                                </div>
                             </div>
-
-                            {/* Invisible Interactive Layer */}
-                            <select
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none"
-                                value={selectedSubjectId || ""}
-                                onChange={(e) => handleSelectSubject(e.target.value)}
-                                aria-label="Alterar matéria selecionada"
-                            >
-                                {activeSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
                         </div>
                       </div>
-
-                      {/* Removed the Initial Letter Icon as requested */}
                    </div>
                 </div>
 
@@ -693,20 +689,12 @@ export const StudyCycle = ({
                     </div>
 
                     <div className="relative z-10">
-                         {/* This Select mimics the behavior of the Subject select but for Topics */}
                          <div className="relative">
                             <select
-                                className="w-full bg-slate-800 text-white border border-slate-600 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 appearance-none"
+                                className="w-full bg-slate-800 text-white border border-slate-600 hover:border-slate-500 rounded-lg py-2.5 pl-3 pr-10 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 appearance-none transition-colors"
                                 value={effectiveTopicId || ""}
                                 onChange={(e) => setOverrideTopicId(e.target.value)}
                                 disabled={!selectedSubject}
-                                style={{
-                                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                    backgroundPosition: `right 0.5rem center`,
-                                    backgroundRepeat: `no-repeat`,
-                                    backgroundSize: `1.5em 1.5em`,
-                                    paddingRight: `2.5rem`
-                                }}
                             >
                                 <option value="" disabled>Selecione um tópico...</option>
                                 {subjectTopics.map(topic => (
@@ -715,6 +703,9 @@ export const StudyCycle = ({
                                     </option>
                                 ))}
                             </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <ChevronDown size={16} />
+                            </div>
                          </div>
 
                          {/* Info about why this is selected if it is the suggestion */}
