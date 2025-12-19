@@ -8,7 +8,8 @@ import {
   BookOpen,
   ArrowRight
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ReviewsWidget } from '../components/widgets/ReviewsWidget';
 
 export const Dashboard = () => {
   const {
@@ -18,6 +19,8 @@ export const Dashboard = () => {
     syllabusItems,
     studyProfiles
   } = useStudyContext();
+
+  const navigate = useNavigate();
 
   if (!activeProfileId) {
     return (
@@ -43,25 +46,48 @@ export const Dashboard = () => {
   const progress = totalTopics ? Math.round((studiedTopics / totalTopics) * 100) : 0;
 
   const todaySessions = activeSessions.filter(s => {
-    const sessionDate = new Date(s.date).toDateString();
-    const today = new Date().toDateString();
-    return sessionDate === today;
+    // s.date is YYYY-MM-DD string. We need to compare it to today's date in local time.
+    const today = new Date();
+    // Format to YYYY-MM-DD in local time
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localTodayStr = `${year}-${month}-${day}`;
+
+    return s.date === localTodayStr;
   });
   const todayTime = todaySessions.reduce((acc, s) => acc + (s.duration || 0), 0) / 60;
 
   // Recent Activity (Top 5 sessions)
   const recentSessions = [...activeSessions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
 
-  // Top Subjects by Time
-  const topSubjects = [...activeSubjects]
+  // All subjects with time (Removed slice)
+  const allSubjects = [...activeSubjects]
     .map(s => ({
         ...s,
         hours: activeSessions
             .filter(session => session.subjectId === s.id)
             .reduce((acc, session) => acc + (session.duration || 0), 0) / 60
     }))
-    .sort((a, b) => b.hours - a.hours)
-    .slice(0, 4);
+    .sort((a, b) => b.hours - a.hours);
+
+  const handleReviewClick = (item) => {
+    // Navigate to subjects with state to open modal
+    navigate('/subjects', {
+        state: {
+            openSessionModal: true,
+            initialData: {
+                subjectId: item.subjectId,
+                syllabusItemId: item.id,
+                isReview: true
+            }
+        }
+    });
+  };
+
+  const handleSubjectClick = (subjectId) => {
+      navigate('/subjects', { state: { expandSubjectId: subjectId } });
+  };
 
   return (
     <div className="space-y-8 animate-enter">
@@ -102,20 +128,29 @@ export const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Quick Subjects Overview */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Matérias Principais</h2>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+
+        {/* Left Column: Reviews & Subjects (2/3 on large screens) */}
+        <div className="xl:col-span-2 flex flex-col gap-8">
+
+            {/* Quick Subjects Overview */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white">Matérias Principais</h2>
                 <Link to="/subjects" className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
                     Ver todas <ArrowRight size={14} />
                 </Link>
             </div>
 
-            <div className="space-y-4">
-                {topSubjects.length > 0 ? (
-                    topSubjects.map(s => (
-                        <div key={s.id} className="group">
+            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {allSubjects.length > 0 ? (
+                    allSubjects.map(s => (
+                        <div
+                            key={s.id}
+                            className="group cursor-pointer hover:bg-slate-800/50 p-2 rounded-lg transition-colors"
+                            onClick={() => handleSubjectClick(s.id)}
+                        >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-slate-300 font-medium">{s.name}</span>
                                 <span className="text-slate-400 text-sm">{s.hours.toFixed(1)}h</span>
@@ -134,10 +169,10 @@ export const Dashboard = () => {
             </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Atividade Recente</h2>
+            {/* Recent Activity */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white">Atividade Recente</h2>
                 <Link to="/schedule" className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
                     Ver agenda <ArrowRight size={14} />
                 </Link>
@@ -169,7 +204,18 @@ export const Dashboard = () => {
                     <p className="text-slate-500 text-sm">Nenhuma sessão registrada recentemente.</p>
                 )}
             </div>
+            </div>
         </div>
+
+        {/* Right Column: Widget */}
+        <div className="xl:col-span-1 h-full min-h-[400px]">
+           <ReviewsWidget
+             syllabusItems={syllabusItems}
+             subjects={activeSubjects}
+             onReviewClick={handleReviewClick}
+           />
+        </div>
+
       </div>
     </div>
   );

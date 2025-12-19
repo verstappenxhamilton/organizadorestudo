@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { sanitizeMultilineText, sanitizeText } from "../utils/helpers";
-import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays } from "lucide-react";
+import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays, Timer, Play, Pause, Square } from "lucide-react";
+import { useStudyContext } from "../context/StudyContext";
 
 export const SessionModal = ({
   isOpen,
@@ -14,6 +15,8 @@ export const SessionModal = ({
   onSubmit,
   showToast,
 }) => {
+  const { timerState, elapsedSeconds, startTimer, pauseTimer, resumeTimer, stopTimer, discardTimer } = useStudyContext();
+
   const [formData, setFormData] = useState({
     subjectId: "",
     date: "",
@@ -23,10 +26,16 @@ export const SessionModal = ({
     accuracy: "",
     notes: "",
     isReview: false,
+    studyType: "theory", // theory, questions, legislation, review
     nextReviewDate: "",
     reviewDays: null,
     noNextReview: false,
   });
+
+  // Derived state to check if global timer is active for this session
+  const isGlobalTimerActive = timerState.isRunning || (timerState.accumulatedTime > 0 && !timerState.subjectId) || (timerState.subjectId === formData.subjectId);
+  // Actually, simplest check: is there a timer running?
+  // User Requirement: "que haja um pequeno Cronômetro que liberará tão logo o usuário sete ao menos uma materia"
 
   useEffect(() => {
     const defaultDate = new Date().toISOString().split("T")[0];
@@ -41,6 +50,7 @@ export const SessionModal = ({
         accuracy: editingSession.accuracy || "",
         notes: editingSession.notes || "",
         isReview: editingSession.isReview || false,
+        studyType: editingSession.studyType || "theory",
         nextReviewDate: editingSession.nextReviewDate || "",
         reviewDays: null,
         noNextReview: false,
@@ -57,6 +67,7 @@ export const SessionModal = ({
         accuracy: "",
         notes: "",
         isReview: false,
+        studyType: initialSessionData?.isReview ? "review" : "theory",
         nextReviewDate: "",
         reviewDays: null,
         noNextReview: false,
@@ -75,7 +86,20 @@ export const SessionModal = ({
       showToast("Data é obrigatória", "warning");
       return;
     }
-    if (formData.duration <= 0) {
+    // Calculate final duration: use Timer if active and valid, otherwise Form Data
+    let finalDuration = Number(formData.duration) || 0;
+
+    // If timer is running for this session, use its current value
+    if (timerState.subjectId === formData.subjectId && (timerState.isRunning || timerState.accumulatedTime > 0)) {
+        // Use the live accumulated time + current session time if running
+        // We can get this by stopping the timer
+        // But wait, stopTimer returns seconds.
+        // We should stop it here to "commit" the time.
+        const seconds = stopTimer();
+        finalDuration = seconds / 60;
+    }
+
+    if (finalDuration <= 0) {
       showToast("Duração deve ser maior que zero", "warning");
       return;
     }
@@ -83,17 +107,42 @@ export const SessionModal = ({
     const submissionData = {
       ...formData,
       date: sanitizeText(formData.date).slice(0, 20),
-      duration: Math.max(0, Math.round(Number(formData.duration) || 0)),
+      duration: Math.max(0, Math.round(finalDuration)),
       accuracy:
         formData.accuracy === ""
           ? ""
           : Math.max(0, Math.min(100, Number(formData.accuracy) || 0)),
       notes: sanitizeMultilineText(formData.notes).slice(0, 2000),
+      studyType: formData.studyType,
       nextReviewDate: sanitizeText(formData.nextReviewDate).slice(0, 20),
     };
 
+    // Timer is already stopped above if it was running for this subject to get duration
+
     onSubmit(submissionData);
   };
+
+  const handleStopTimerAndUse = () => {
+     const seconds = stopTimer();
+     setFormData(prev => ({ ...prev, duration: seconds / 60 }));
+  };
+
+  // Timer Controls logic for this modal
+  const handleStartTimer = () => {
+     if (!formData.subjectId) return;
+     startTimer(formData.subjectId, formData.syllabusItemId || null);
+  };
+
+  const handlePauseTimer = () => {
+     pauseTimer();
+  };
+
+  const isTimerForThisSession = timerState.subjectId === formData.subjectId;
+  const showTimerControls = !!formData.subjectId;
+
+  const currentDurationInMinutes = isTimerForThisSession && (timerState.isRunning || timerState.accumulatedTime > 0)
+     ? (elapsedSeconds / 60)
+     : (formData.duration / 60);
 
   if (!isOpen) return null;
 
@@ -180,6 +229,33 @@ export const SessionModal = ({
                   ))}
                 </select>
               </div>
+
+              {/* Study Type */}
+              <div className="form-group">
+                 <label className="form-label text-sm text-gray-400 mb-1 block">Tipo de Estudo</label>
+                 <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'theory', label: 'Teoria' },
+                      { id: 'questions', label: 'Questões' },
+                      { id: 'legislation', label: 'Lei Seca' },
+                    ].map(type => (
+                       <button
+                         key={type.id}
+                         type="button"
+                         onClick={() => setFormData(prev => ({ ...prev, studyType: type.id }))}
+                         className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all
+                           ${formData.studyType === type.id
+                             ? 'bg-blue-600 border-blue-500 text-white'
+                             : 'bg-slate-800 border-slate-600 text-gray-400 hover:border-blue-500'
+                           }
+                         `}
+                       >
+                          {type.label}
+                       </button>
+                    ))}
+                 </div>
+              </div>
+
             </div>
 
             {/* SEÇÃO 2: TEMPO E DATA */}
@@ -190,9 +266,6 @@ export const SessionModal = ({
                     <h3 className="font-semibold text-sm uppercase tracking-wide">Quando?</h3>
                   </div>
                    <div className="form-group">
-                    <label className="form-label text-sm text-gray-400 mb-1 block">
-                      Data <span className="text-red-500">*</span>
-                    </label>
                     <input
                       type="date"
                       className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-emerald-500 outline-none"
@@ -202,6 +275,9 @@ export const SessionModal = ({
                       }
                       required
                     />
+                    <label className="form-label text-sm text-gray-400 mt-1 block">
+                      Data <span className="text-red-500">*</span>
+                    </label>
                   </div>
                </div>
 
@@ -210,25 +286,69 @@ export const SessionModal = ({
                     <Clock size={18} />
                     <h3 className="font-semibold text-sm uppercase tracking-wide">Duração</h3>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label text-sm text-gray-400 mb-1 block">
-                      Horas Líquidas <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none"
-                      value={formData.duration > 0 ? formData.duration / 60 : ""}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          duration: parseFloat(e.target.value) * 60 || 0,
-                        }))
-                      }
-                      min="0.1"
-                      placeholder="Ex: 1.5"
-                      required
-                    />
+
+                  {/* Timer Integrated */}
+                  <div className="flex flex-col gap-2">
+                      <div className="form-group relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none"
+                          value={currentDurationInMinutes > 0 ? currentDurationInMinutes.toFixed(2) : ""}
+                          onChange={(e) => {
+                             // Only allow manual edit if timer is NOT running for this session
+                             if (!isTimerForThisSession || (!timerState.isRunning && timerState.accumulatedTime === 0)) {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  duration: parseFloat(e.target.value) * 60 || 0,
+                                }));
+                             }
+                          }}
+                          readOnly={isTimerForThisSession && (timerState.isRunning || timerState.accumulatedTime > 0)}
+                          min="0.01"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+
+                      {/* Controls (Moved below) */}
+                      <div className="flex items-center gap-2">
+                         {!isTimerForThisSession || !timerState.isRunning ? (
+                             <button
+                                type="button"
+                                disabled={!showTimerControls || (timerState.isRunning && !isTimerForThisSession)}
+                                onClick={handleStartTimer}
+                                className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white flex-1 flex items-center justify-center gap-2 text-sm font-semibold"
+                             >
+                                <Play size={16} /> Iniciar
+                             </button>
+                         ) : (
+                             <button
+                                type="button"
+                                onClick={handlePauseTimer}
+                                className="p-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-white flex-1 flex items-center justify-center gap-2 text-sm font-semibold"
+                             >
+                                <Pause size={16} /> Pausar
+                             </button>
+                         )}
+
+                         {isTimerForThisSession && (timerState.accumulatedTime > 0 || timerState.isRunning) && (
+                             <button
+                                type="button"
+                                onClick={handleStopTimerAndUse}
+                                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200"
+                                title="Parar e Usar Tempo"
+                             >
+                                <Square size={16} fill="currentColor" />
+                             </button>
+                         )}
+                      </div>
+
+                      {isTimerForThisSession && (
+                          <div className="text-xs text-emerald-400 text-center animate-pulse">
+                              {timerState.isRunning ? "Cronômetro ativo..." : (timerState.accumulatedTime > 0 ? "Cronômetro pausado" : "")}
+                          </div>
+                      )}
                   </div>
                </div>
             </div>

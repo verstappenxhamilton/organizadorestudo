@@ -1,9 +1,13 @@
 import React, { createContext, useContext, useState } from 'react';
 import { useStudyData } from '../hooks/useStudyData';
+import { useGlobalTimer } from '../hooks/useGlobalTimer';
 
 const StudyContext = createContext();
 
 export const StudyProvider = ({ children }) => {
+  // Global Timer
+  const globalTimer = useGlobalTimer();
+
   // Toast state managed locally in context to be available globally
   const [toast, setToast] = useState({
     message: "",
@@ -49,7 +53,9 @@ export const StudyProvider = ({ children }) => {
       getSubjectStudyTime,
       calculateSubjectProgress,
       showToast,
-      toast
+      toast,
+      deleteSession: studyData.deleteSession,
+      ...globalTimer // Expose timer methods and state directly
     }}>
       {children}
     </StudyContext.Provider>
