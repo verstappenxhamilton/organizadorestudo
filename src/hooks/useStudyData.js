@@ -13,6 +13,7 @@ export const useStudyData = (showToast) => {
     const [subjects, setSubjects] = useState([]);
     const [studySessions, setStudySessions] = useState([]);
     const [syllabusItems, setSyllabusItems] = useState([]);
+    const [selectedGlobalEditalIds, setSelectedGlobalEditalIds] = useState([]);
 
     // Load initial data
     useEffect(() => {
@@ -24,11 +25,13 @@ export const useStudyData = (showToast) => {
                 const savedSubjects = loadFromLocalStorage("subjects") || [];
                 const savedSessions = loadFromLocalStorage("sessions") || [];
                 const savedSyllabusItems = loadFromLocalStorage("syllabusItems") || [];
+                const savedGlobalEditalIds = loadFromLocalStorage("selectedGlobalEditalIds") || [];
 
                 setStudyProfiles(savedProfiles);
                 setSubjects(savedSubjects);
                 setStudySessions(savedSessions);
                 setSyllabusItems(savedSyllabusItems);
+                setSelectedGlobalEditalIds(savedGlobalEditalIds);
 
                 if (savedProfiles.length > 0) {
                     setActiveProfileId(savedActiveProfileId || savedProfiles[0].id);
@@ -167,6 +170,16 @@ export const useStudyData = (showToast) => {
         });
     };
 
+    const toggleGlobalEditalSelection = (id) => {
+        setSelectedGlobalEditalIds(prev => {
+            const newSelection = prev.includes(id)
+                ? prev.filter(eid => eid !== id)
+                : [...prev, id];
+            saveToLocalStorage("selectedGlobalEditalIds", newSelection);
+            return newSelection;
+        });
+    };
+
     return {
         isLoading,
         studyProfiles,
@@ -174,6 +187,7 @@ export const useStudyData = (showToast) => {
         subjects,
         studySessions,
         syllabusItems,
+        selectedGlobalEditalIds,
 
         // Setters (exposed nicely)
         setStudyProfiles,
@@ -189,6 +203,7 @@ export const useStudyData = (showToast) => {
         deleteSubject,
         addOrUpdateSession,
         deleteSession,
-        updateSyllabusItem
+        updateSyllabusItem,
+        toggleGlobalEditalSelection
     };
 };

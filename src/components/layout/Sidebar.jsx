@@ -17,6 +17,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/subjects', label: 'Matérias', icon: BookOpen },
     { path: '/cycle', label: 'Ciclo de Estudos', icon: RotateCw },
+    { path: '/editais', label: 'Biblioteca de Editais', icon: BookMarked },
     { path: '/schedule', label: 'Agenda', icon: CalendarDays },
     { path: '/reports', label: 'Relatórios', icon: BarChart3 },
     { path: '/settings', label: 'Configurações', icon: Settings },

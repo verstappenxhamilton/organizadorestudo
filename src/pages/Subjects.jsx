@@ -8,6 +8,7 @@ import { ItemDetailsModal } from '../components/modals/ItemDetailsModal';
 import { SessionModal } from '../components/SessionModal';
 import { SyllabusModal } from '../components/modals/SyllabusModal';
 import { SessionHistoryModal } from '../components/modals/SessionHistoryModal';
+import { CombinedSyllabusView } from '../components/CombinedSyllabusView';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { saveToLocalStorage } from '../utils/localStorage';
 
@@ -24,9 +25,11 @@ export const Subjects = () => {
     showToast,
     getSubjectStudyTime,
     calculateSubjectProgress,
-    studySessions
+    studySessions,
+    selectedGlobalEditalIds, // New
   } = useStudyContext();
 
+  const [viewMode, setViewMode] = useState("custom"); // "custom" | "combined"
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [selectedSyllabusItem, setSelectedSyllabusItem] = useState(null);
 
@@ -159,30 +162,51 @@ export const Subjects = () => {
         </div>
       </div>
 
-      <SubjectsOverview
-        subjects={activeSubjects}
-        syllabusItems={activeSyllabusItems}
-        setSyllabusItems={setSyllabusItems}
-        expandedSubjects={expandedSubjects}
-        setExpandedSubjects={setExpandedSubjects}
-        getSubjectStudyTime={getSubjectStudyTime}
-        setSelectedSyllabusItem={setSelectedSyllabusItem}
-        setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
-        studySessions={activeSessions}
-        addOrUpdateSession={addOrUpdateSession}
-        onToggleStudied={handleToggleStudied}
-        setIsSubjectModalOpen={setIsSubjectModalOpen}
-        setCurrentSubjectForSession={setCurrentSubjectForSession}
-        setIsSessionModalOpen={setIsSessionModalOpen}
-        setCurrentSubjectForSyllabus={setCurrentSubjectForSyllabus}
-        setIsSyllabusModalOpen={setIsSyllabusModalOpen}
-        setEditingSubject={setEditingSubject}
-        setConfirmationDialog={setConfirmationDialog}
-        handleDeleteSubject={handleDeleteSubject}
-        calculateSubjectProgress={calculateSubjectProgress}
-        setIsSessionHistoryModalOpen={setIsSessionHistoryModalOpen}
-        setSelectedSubjectForHistory={setSelectedSubjectForHistory}
-      />
+      {selectedGlobalEditalIds.length > 0 && (
+          <div className="flex bg-slate-800 p-1 rounded-lg w-fit border border-slate-700 mb-6">
+              <button
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'custom' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                  onClick={() => setViewMode('custom')}
+              >
+                  Meus Materiais
+              </button>
+              <button
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'combined' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                  onClick={() => setViewMode('combined')}
+              >
+                  Editais Unificados ({selectedGlobalEditalIds.length})
+              </button>
+          </div>
+      )}
+
+      {viewMode === 'custom' || selectedGlobalEditalIds.length === 0 ? (
+        <SubjectsOverview
+            subjects={activeSubjects}
+            syllabusItems={activeSyllabusItems}
+            setSyllabusItems={setSyllabusItems}
+            expandedSubjects={expandedSubjects}
+            setExpandedSubjects={setExpandedSubjects}
+            getSubjectStudyTime={getSubjectStudyTime}
+            setSelectedSyllabusItem={setSelectedSyllabusItem}
+            setIsItemDetailsModalOpen={setIsItemDetailsModalOpen}
+            studySessions={activeSessions}
+            addOrUpdateSession={addOrUpdateSession}
+            onToggleStudied={handleToggleStudied}
+            setIsSubjectModalOpen={setIsSubjectModalOpen}
+            setCurrentSubjectForSession={setCurrentSubjectForSession}
+            setIsSessionModalOpen={setIsSessionModalOpen}
+            setCurrentSubjectForSyllabus={setCurrentSubjectForSyllabus}
+            setIsSyllabusModalOpen={setIsSyllabusModalOpen}
+            setEditingSubject={setEditingSubject}
+            setConfirmationDialog={setConfirmationDialog}
+            handleDeleteSubject={handleDeleteSubject}
+            calculateSubjectProgress={calculateSubjectProgress}
+            setIsSessionHistoryModalOpen={setIsSessionHistoryModalOpen}
+            setSelectedSubjectForHistory={setSelectedSubjectForHistory}
+        />
+      ) : (
+        <CombinedSyllabusView />
+      )}
 
       {/* Modals reused from original code */}
       <SubjectModal
