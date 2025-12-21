@@ -8,9 +8,11 @@ import { ItemDetailsModal } from '../components/modals/ItemDetailsModal';
 import { SessionModal } from '../components/SessionModal';
 import { SyllabusModal } from '../components/modals/SyllabusModal';
 import { SessionHistoryModal } from '../components/modals/SessionHistoryModal';
-import { CombinedSyllabusView } from '../components/CombinedSyllabusView';
+import { EditalSelector } from '../components/EditalSelector';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { saveToLocalStorage } from '../utils/localStorage';
+import { Split } from 'lucide-react';
+import parsedEditais from '../data/parsedEditais.json';
 
 export const Subjects = () => {
   const {
@@ -26,12 +28,14 @@ export const Subjects = () => {
     getSubjectStudyTime,
     calculateSubjectProgress,
     studySessions,
-    selectedGlobalEditalIds, // New
   } = useStudyContext();
 
-  const [viewMode, setViewMode] = useState("custom"); // "custom" | "combined"
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [selectedSyllabusItem, setSelectedSyllabusItem] = useState(null);
+
+  // Comparison State
+  const [comparisonEditalId, setComparisonEditalId] = useState(null);
+  const [isEditalSelectorOpen, setIsEditalSelectorOpen] = useState(false);
 
   const location = useLocation();
 
@@ -143,6 +147,22 @@ export const Subjects = () => {
           <p className="text-slate-400">Gerencie seus estudos e acompanhe o edital.</p>
         </div>
         <div className="flex gap-3">
+          {comparisonEditalId ? (
+             <button
+                className="btn bg-amber-500/10 text-amber-500 border border-amber-500/50 hover:bg-amber-500/20 flex items-center gap-2"
+                onClick={() => setComparisonEditalId(null)}
+              >
+                <Split size={18} /> Parar Comparação
+             </button>
+          ) : (
+            <button
+                className="btn btn-secondary flex items-center gap-2"
+                onClick={() => setIsEditalSelectorOpen(true)}
+            >
+                <Split size={18} /> Comparar Edital
+            </button>
+          )}
+
            <button
             className="btn btn-secondary flex items-center gap-2"
             onClick={() => setIsSubjectModalOpen(true)}
@@ -162,24 +182,20 @@ export const Subjects = () => {
         </div>
       </div>
 
-      {selectedGlobalEditalIds.length > 0 && (
-          <div className="flex bg-slate-800 p-1 rounded-lg w-fit border border-slate-700 mb-6">
-              <button
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'custom' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                  onClick={() => setViewMode('custom')}
-              >
-                  Meus Materiais
-              </button>
-              <button
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${viewMode === 'combined' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                  onClick={() => setViewMode('combined')}
-              >
-                  Editais Unificados ({selectedGlobalEditalIds.length})
-              </button>
-          </div>
+      {comparisonEditalId && (
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 p-4 rounded-xl flex items-center gap-4 animate-enter">
+           <div className="p-2 bg-sky-500/20 text-sky-400 rounded-lg">
+             <Split size={24} />
+           </div>
+           <div>
+             <h3 className="font-bold text-white">Modo Comparação Ativo</h3>
+             <p className="text-sm text-slate-400">
+               Comparando seus estudos com <span className="text-sky-400 font-medium">{parsedEditais.find(e => e.id === comparisonEditalId)?.nome || 'Edital Selecionado'}</span>.
+             </p>
+           </div>
+        </div>
       )}
 
-      {viewMode === 'custom' || selectedGlobalEditalIds.length === 0 ? (
         <SubjectsOverview
             subjects={activeSubjects}
             syllabusItems={activeSyllabusItems}
@@ -203,10 +219,19 @@ export const Subjects = () => {
             calculateSubjectProgress={calculateSubjectProgress}
             setIsSessionHistoryModalOpen={setIsSessionHistoryModalOpen}
             setSelectedSubjectForHistory={setSelectedSubjectForHistory}
+            comparisonEditalId={comparisonEditalId}
         />
-      ) : (
-        <CombinedSyllabusView />
-      )}
+
+        {isEditalSelectorOpen && (
+            <EditalSelector
+                onSelect={(id) => {
+                    setComparisonEditalId(id);
+                    setIsEditalSelectorOpen(false);
+                }}
+                onCancel={() => setIsEditalSelectorOpen(false)}
+                currentComparisonId={comparisonEditalId}
+            />
+        )}
 
       {/* Modals reused from original code */}
       <SubjectModal

@@ -1,0 +1,17 @@
+
+> organizador-estudos@1.0.0 dev
+> vite
+
+Port 3000 is in use, trying another one...
+Port 3001 is in use, trying another one...
+Port 3002 is in use, trying another one...
+
+  VITE v5.4.19  ready in 313 ms
+
+  ➜  Local:   http://localhost:3003/
+  ➜  Network: http://192.168.0.2:3003/
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+10:14:16 PM [vite] hmr update /src/components/EditalSelector.jsx, /src/index.css
+10:33:01 PM [vite] hmr update /src/components/SubjectsOverview.jsx, /src/index.css
