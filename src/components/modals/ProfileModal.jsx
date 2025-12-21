@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { sanitizeMultilineText, sanitizeText } from '../../utils/helpers';
+import { getAvailableEditais } from '../../utils/editalManager';
 
 export const ProfileModal = ({
     isOpen,
@@ -13,23 +14,29 @@ export const ProfileModal = ({
         name: '',
         description: '',
         examDate: '',
-        institution: ''
+        institution: '',
+        editalId: ''
     });
+    const [availableEditais, setAvailableEditais] = useState([]);
 
     useEffect(() => {
+        setAvailableEditais(getAvailableEditais());
+
         if (editingProfile) {
             setFormData({
                 name: editingProfile.name || '',
                 description: editingProfile.description || '',
                 examDate: editingProfile.examDate || '',
-                institution: editingProfile.institution || ''
+                institution: editingProfile.institution || '',
+                editalId: editingProfile.editalId || ''
             });
         } else {
             setFormData({
                 name: '',
                 description: '',
                 examDate: '',
-                institution: ''
+                institution: '',
+                editalId: ''
             });
         }
     }, [editingProfile]);
@@ -43,11 +50,15 @@ export const ProfileModal = ({
             return;
         }
 
+        const selectedEdital = availableEditais.find((edital) => edital.id === formData.editalId);
+
         onSubmit({
             name,
             description: sanitizeMultilineText(formData.description).slice(0, 500),
             examDate: sanitizeText(formData.examDate).slice(0, 20),
-            institution: sanitizeText(formData.institution).slice(0, 120)
+            institution: sanitizeText(formData.institution).slice(0, 120),
+            editalId: formData.editalId || '',
+            editalNome: selectedEdital?.nome || ''
         });
     };
 
@@ -119,6 +130,25 @@ export const ProfileModal = ({
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="Ex: CESPE, FCC, VUNESP..."
                             />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Edital Global (opcional)</label>
+                            <select
+                                className="form-input"
+                                value={formData.editalId}
+                                onChange={(e) => setFormData(prev => ({ ...prev, editalId: e.target.value }))}
+                            >
+                                <option value="">Não selecionar edital</option>
+                                {availableEditais.map((edital) => (
+                                    <option key={edital.id} value={edital.id}>
+                                        {edital.nome}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Selecione um edital global para importar matérias e comparar conteúdos.
+                            </p>
                         </div>
 
                         <div className="flex justify-end gap-3 pt-4">

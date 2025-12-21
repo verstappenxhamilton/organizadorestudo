@@ -1,0 +1,172 @@
+export const globalEditais = [
+  {
+    id: 'global-edital-enam-1',
+    nome: 'EDITAL ENAM 1',
+    concurso: 'ENAM 1',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL ENAM 1.pdf'
+  },
+  {
+    id: 'global-edital-enam-2024-2',
+    nome: 'EDITAL ENAM 2024.2',
+    concurso: 'ENAM 2024.2',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL ENAM 2024.2.pdf'
+  },
+  {
+    id: 'global-edital-enam-2025-1',
+    nome: 'EDITAL ENAM 2025.1',
+    concurso: 'ENAM 2025.1',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL ENAM 2025.1.pdf'
+  },
+  {
+    id: 'global-edital-mpf-2022',
+    nome: 'EDITAL MPF 2022',
+    concurso: 'MPF 2022',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL MPF 2022.pdf'
+  },
+  {
+    id: 'global-edital-mpf-2025',
+    nome: 'EDITAL MPF 2025',
+    concurso: 'MPF 2025',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL MPF 2025.pdf'
+  },
+  {
+    id: 'global-edital-mpgo-2023',
+    nome: 'EDITAL MPGO 2023',
+    concurso: 'MPGO 2023',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL MPGO 2023.pdf'
+  },
+  {
+    id: 'global-edital-mpmg-2024',
+    nome: 'EDITAL MPMG 2024',
+    concurso: 'MPMG 2024',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL MPMG 2024.pdf'
+  },
+  {
+    id: 'global-edital-mpmg',
+    nome: 'EDITAL MPMG',
+    concurso: 'MPMG',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL MPMG.pdf'
+  },
+  {
+    id: 'global-edital-mprs-2025',
+    nome: 'EDITAL MPRS 2025',
+    concurso: 'MPRS 2025',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL MPRS 2025.pdf'
+  },
+  {
+    id: 'global-edital-tjdft-2022-juiz',
+    nome: 'EDITAL TJDFT 2022 JUIZ',
+    concurso: 'TJDFT 2022 JUIZ',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL TJDFT 2022 JUIZ.pdf'
+  },
+  {
+    id: 'global-edital-tjmg-2021',
+    nome: 'EDITAL TJMG 2021',
+    concurso: 'TJMG 2021',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL TJMG 2021.pdf'
+  },
+  {
+    id: 'global-edital-tjsp-2024',
+    nome: 'EDITAL TJSP 2024',
+    concurso: 'TJSP 2024',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL TJSP 2024.pdf'
+  },
+  {
+    id: 'global-edital-trf2-2025',
+    nome: 'EDITAL TRF2 2025',
+    concurso: 'TRF2 2025',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/EDITAL TRF2 2025 .pdf'
+  },
+  {
+    id: 'global-edital-trf5-2025',
+    nome: 'TRF5 EDITAL 2025',
+    concurso: 'TRF5 2025',
+    orgao: '',
+    banca: '',
+    dataProva: '',
+    inscricoesAte: '',
+    materias: [],
+    itensEdital: [],
+    arquivoPdf: 'editais/TRF5 EDITAL 2025.pdf'
+  }
+];
+
+export default globalEditais;

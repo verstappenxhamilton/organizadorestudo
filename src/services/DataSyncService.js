@@ -82,6 +82,8 @@ export const DataSyncService = {
             ),
             examDate: sanitizeText(p?.examDate || "").slice(0, 20),
             institution: sanitizeText(p?.institution || "").slice(0, 120),
+            editalId: sanitizeText(p?.editalId || "").slice(0, 120),
+            editalNome: sanitizeText(p?.editalNome || "").slice(0, 120),
             createdAt: p?.createdAt || new Date().toISOString(),
           }))
           .filter((p) => p.id && p.name);

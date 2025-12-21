@@ -4,6 +4,7 @@ import { PlusCircle } from 'lucide-react';
 import { SyllabusProcessor } from '../SyllabusProcessor';
 import { sanitizeText } from '../../utils/helpers';
 import { saveToLocalStorage } from '../../utils/localStorage';
+import { isNameStudiedInProgress, loadGlobalProgress } from '../../utils/progressRegistry';
 
 export const SyllabusModal = ({
     isOpen,
@@ -22,11 +23,12 @@ export const SyllabusModal = ({
             return;
         }
 
+        const progressMap = loadGlobalProgress();
         const newItem = {
             id: Date.now().toString(),
             subjectId: currentSubjectForSyllabus.id,
             name,
-            isStudied: false,
+            isStudied: isNameStudiedInProgress(name, progressMap),
             createdAt: new Date().toISOString()
         };
 
@@ -44,11 +46,12 @@ export const SyllabusModal = ({
 
         if (cleaned.length === 0) return;
 
+        const progressMap = loadGlobalProgress();
         const newItems = cleaned.map((itemName, index) => ({
             id: (Date.now() + index).toString(),
             subjectId: currentSubjectForSyllabus.id,
             name: itemName,
-            isStudied: false,
+            isStudied: isNameStudiedInProgress(itemName, progressMap),
             createdAt: new Date().toISOString()
         }));
 
@@ -68,11 +71,12 @@ export const SyllabusModal = ({
         const anchorIndex = syllabusItems.findIndex(item => item.id === anchorItem.id);
         if (anchorIndex === -1) return;
 
+        const progressMap = loadGlobalProgress();
         const newItem = {
             id: `${Date.now()}`,
             subjectId: currentSubjectForSyllabus.id,
             name,
-            isStudied: false,
+            isStudied: isNameStudiedInProgress(name, progressMap),
             createdAt: new Date().toISOString()
         };
 

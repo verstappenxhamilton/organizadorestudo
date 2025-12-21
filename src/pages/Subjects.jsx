@@ -9,13 +9,14 @@ import { SessionModal } from '../components/SessionModal';
 import { SyllabusModal } from '../components/modals/SyllabusModal';
 import { SessionHistoryModal } from '../components/modals/SessionHistoryModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { saveToLocalStorage } from '../utils/localStorage';
+import { EditalComparisonModal } from '../components/modals/EditalComparisonModal';
 
 export const Subjects = () => {
   const {
     activeSubjects,
     activeSyllabusItems,
     setSyllabusItems,
+    updateSyllabusItem,
     activeSessions,
     addOrUpdateSession,
     deleteSession,
@@ -79,6 +80,7 @@ export const Subjects = () => {
   const [isItemDetailsModalOpen, setIsItemDetailsModalOpen] = useState(false);
   const [isSyllabusModalOpen, setIsSyllabusModalOpen] = useState(false);
   const [isSessionHistoryModalOpen, setIsSessionHistoryModalOpen] = useState(false);
+  const [isEditalComparisonOpen, setIsEditalComparisonOpen] = useState(false);
 
   // Context for modals
   const [currentSubjectForSession, setCurrentSubjectForSession] = useState(null);
@@ -95,15 +97,11 @@ export const Subjects = () => {
   });
 
   const handleToggleStudied = (itemId) => {
-    setSyllabusItems((prev) => {
-      const item = prev.find((i) => i.id === itemId);
-      if (!item) return prev;
-      const newStatus = !item.isStudied;
-      showToast(newStatus ? "Marcado como estudado!" : "Desmarcado.", "success");
-      const updated = prev.map((i) => i.id === itemId ? { ...i, isStudied: newStatus } : i);
-      saveToLocalStorage("syllabusItems", updated);
-      return updated;
-    });
+    const item = activeSyllabusItems.find((i) => i.id === itemId);
+    if (!item) return;
+    const newStatus = !item.isStudied;
+    updateSyllabusItem(itemId, { isStudied: newStatus });
+    showToast(newStatus ? "Marcado como estudado!" : "Desmarcado.", "success");
   };
 
   const handleSubjectSubmit = (data) => {
@@ -140,11 +138,17 @@ export const Subjects = () => {
           <p className="text-slate-400">Gerencie seus estudos e acompanhe o edital.</p>
         </div>
         <div className="flex gap-3">
-           <button
+          <button
             className="btn btn-secondary flex items-center gap-2"
             onClick={() => setIsSubjectModalOpen(true)}
           >
             <PlusCircle size={18} /> Nova Matéria
+          </button>
+          <button
+            className="btn btn-secondary flex items-center gap-2"
+            onClick={() => setIsEditalComparisonOpen(true)}
+          >
+            <PlusCircle size={18} /> Comparar Editais
           </button>
           <button
             className="btn btn-primary flex items-center gap-2"
@@ -222,6 +226,10 @@ export const Subjects = () => {
         syllabusItems={activeSyllabusItems}
         setSyllabusItems={setSyllabusItems}
         showToast={showToast}
+      />
+      <EditalComparisonModal
+        isOpen={isEditalComparisonOpen}
+        onClose={() => setIsEditalComparisonOpen(false)}
       />
       <SessionHistoryModal
         isOpen={isSessionHistoryModalOpen}

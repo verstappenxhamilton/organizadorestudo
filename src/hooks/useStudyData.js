@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
 import { loadFromLocalStorage, saveToLocalStorage } from '../utils/localStorage';
+import { ensureGlobalEditais } from '../utils/editalManager';
+import {
+    isNameStudiedInProgress,
+    loadGlobalProgress,
+    saveGlobalProgress,
+    updateProgressForName
+} from '../utils/progressRegistry';
 
 /**
  * Custom hook to manage all study-related data (profiles, subjects, sessions, etc.)
@@ -19,16 +26,30 @@ export const useStudyData = (showToast) => {
         const initializeApp = async () => {
             try {
                 setIsLoading(true);
+                ensureGlobalEditais();
                 const savedProfiles = loadFromLocalStorage("studyProfiles") || [];
                 const savedActiveProfileId = loadFromLocalStorage("activeProfileId");
                 const savedSubjects = loadFromLocalStorage("subjects") || [];
                 const savedSessions = loadFromLocalStorage("sessions") || [];
                 const savedSyllabusItems = loadFromLocalStorage("syllabusItems") || [];
+                const globalProgress = loadGlobalProgress();
+
+                const normalizedItems = (Array.isArray(savedSyllabusItems) ? savedSyllabusItems : []).map((item) => {
+                    if (!item?.name) return item;
+                    if (item.isStudied) return item;
+                    if (isNameStudiedInProgress(item.name, globalProgress)) {
+                        return { ...item, isStudied: true };
+                    }
+                    return item;
+                });
 
                 setStudyProfiles(savedProfiles);
                 setSubjects(savedSubjects);
                 setStudySessions(savedSessions);
-                setSyllabusItems(savedSyllabusItems);
+                setSyllabusItems(normalizedItems);
+                if (normalizedItems.length > 0) {
+                    saveToLocalStorage("syllabusItems", normalizedItems);
+                }
 
                 if (savedProfiles.length > 0) {
                     setActiveProfileId(savedActiveProfileId || savedProfiles[0].id);
@@ -134,7 +155,7 @@ export const useStudyData = (showToast) => {
         // Handle Syllabus Item Updates (Mark Studied OR Next Review Date)
         if (sessionData.syllabusItemId) {
             setSyllabusItems((prev) => {
-                const updated = prev.map((i) => {
+                let updated = prev.map((i) => {
                     if (i.id !== sessionData.syllabusItemId) return i;
 
                     const updates = {};
@@ -143,6 +164,25 @@ export const useStudyData = (showToast) => {
 
                     return Object.keys(updates).length > 0 ? { ...i, ...updates } : i;
                 });
+
+                let progressMap = loadGlobalProgress();
+                if (markTopicStudied) {
+                    const item = updated.find((i) => i.id === sessionData.syllabusItemId);
+                    if (item?.name) {
+                        progressMap = updateProgressForName(item.name, progressMap, true);
+                        saveGlobalProgress(progressMap);
+                    }
+                }
+
+                if (markTopicStudied) {
+                    updated = updated.map((item) => {
+                        if (!item?.name) return item;
+                        return {
+                            ...item,
+                            isStudied: isNameStudiedInProgress(item.name, progressMap)
+                        };
+                    });
+                }
 
                 // Only save if changed (optimization, but map always returns new array so simple save)
                 saveToLocalStorage("syllabusItems", updated);
@@ -159,9 +199,26 @@ export const useStudyData = (showToast) => {
 
     const updateSyllabusItem = (itemId, updates) => {
         setSyllabusItems((prev) => {
-            const updated = prev.map((i) =>
+            let updated = prev.map((i) =>
                 i.id === itemId ? { ...i, ...updates } : i,
             );
+
+            if (Object.prototype.hasOwnProperty.call(updates || {}, 'isStudied')) {
+                const item = updated.find((i) => i.id === itemId);
+                if (item?.name) {
+                    const progressMap = loadGlobalProgress();
+                    const nextMap = updateProgressForName(item.name, progressMap, updates.isStudied);
+                    saveGlobalProgress(nextMap);
+                    updated = updated.map((currentItem) => {
+                        if (!currentItem?.name) return currentItem;
+                        return {
+                            ...currentItem,
+                            isStudied: isNameStudiedInProgress(currentItem.name, nextMap)
+                        };
+                    });
+                }
+            }
+
             saveToLocalStorage("syllabusItems", updated);
             return updated;
         });
