@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { PlusCircle } from 'lucide-react';
 import { SyllabusProcessor } from '../SyllabusProcessor';
 import { sanitizeText } from '../../utils/helpers';
+import { normalizeStudyName } from '../../utils/editalComparison';
 import { saveToLocalStorage } from '../../utils/localStorage';
 
 export const SyllabusModal = ({
@@ -26,6 +27,7 @@ export const SyllabusModal = ({
             id: Date.now().toString(),
             subjectId: currentSubjectForSyllabus.id,
             name,
+            normalizedKey: normalizeStudyName(name),
             isStudied: false,
             createdAt: new Date().toISOString()
         };
@@ -48,6 +50,7 @@ export const SyllabusModal = ({
             id: (Date.now() + index).toString(),
             subjectId: currentSubjectForSyllabus.id,
             name: itemName,
+            normalizedKey: normalizeStudyName(itemName),
             isStudied: false,
             createdAt: new Date().toISOString()
         }));
@@ -72,6 +75,7 @@ export const SyllabusModal = ({
             id: `${Date.now()}`,
             subjectId: currentSubjectForSyllabus.id,
             name,
+            normalizedKey: normalizeStudyName(name),
             isStudied: false,
             createdAt: new Date().toISOString()
         };
@@ -90,7 +94,7 @@ export const SyllabusModal = ({
             return;
         }
         const updatedItems = syllabusItems.map(item =>
-            item.id === itemId ? { ...item, name: cleaned } : item
+            item.id === itemId ? { ...item, name: cleaned, normalizedKey: normalizeStudyName(cleaned) } : item
         );
         setSyllabusItems(updatedItems);
         saveToLocalStorage('syllabusItems', updatedItems);

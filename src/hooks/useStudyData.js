@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { loadFromLocalStorage, saveToLocalStorage } from '../utils/localStorage';
+import { seedGlobalEditais } from '../utils/editalManager';
+import { normalizeStudyName } from '../utils/editalComparison';
 
 /**
  * Custom hook to manage all study-related data (profiles, subjects, sessions, etc.)
@@ -19,6 +21,7 @@ export const useStudyData = (showToast) => {
         const initializeApp = async () => {
             try {
                 setIsLoading(true);
+                seedGlobalEditais();
                 const savedProfiles = loadFromLocalStorage("studyProfiles") || [];
                 const savedActiveProfileId = loadFromLocalStorage("activeProfileId");
                 const savedSubjects = loadFromLocalStorage("subjects") || [];
@@ -84,13 +87,14 @@ export const useStudyData = (showToast) => {
     };
 
     const addOrUpdateSubject = (subjectData, editingId = null) => {
+        const normalizedKey = normalizeStudyName(subjectData?.name);
         const newSubjects = editingId
             ? subjects.map((s) =>
-                s.id === editingId ? { ...s, ...subjectData } : s,
+                s.id === editingId ? { ...s, ...subjectData, normalizedKey } : s,
             )
             : [
                 ...subjects,
-                { id: Date.now().toString(), profileId: activeProfileId, ...subjectData },
+                { id: Date.now().toString(), profileId: activeProfileId, ...subjectData, normalizedKey },
             ];
 
         setSubjects(newSubjects);
@@ -159,12 +163,21 @@ export const useStudyData = (showToast) => {
 
     const updateSyllabusItem = (itemId, updates) => {
         setSyllabusItems((prev) => {
+            const normalizedKey = updates?.name ? normalizeStudyName(updates.name) : undefined;
             const updated = prev.map((i) =>
-                i.id === itemId ? { ...i, ...updates } : i,
+                i.id === itemId ? { ...i, ...updates, ...(normalizedKey ? { normalizedKey } : {}) } : i,
             );
             saveToLocalStorage("syllabusItems", updated);
             return updated;
         });
+    };
+
+    const updateProfileEditais = (profileId, editalIds) => {
+        const updatedProfiles = studyProfiles.map((profile) =>
+            profile.id === profileId ? { ...profile, editalIds } : profile,
+        );
+        setStudyProfiles(updatedProfiles);
+        saveToLocalStorage("studyProfiles", updatedProfiles);
     };
 
     return {
@@ -189,6 +202,7 @@ export const useStudyData = (showToast) => {
         deleteSubject,
         addOrUpdateSession,
         deleteSession,
-        updateSyllabusItem
+        updateSyllabusItem,
+        updateProfileEditais
     };
 };

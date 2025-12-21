@@ -1,5 +1,6 @@
 // Utilitários para gerenciar editais administrativos
 import { loadFromLocalStorage, saveToLocalStorage } from './localStorage';
+import { globalEditaisSeed } from '../data/globalEditais';
 
 export const loadAdminEditais = () => {
   try {
@@ -8,6 +9,22 @@ export const loadAdminEditais = () => {
   } catch (error) {
     console.error('Erro ao carregar editais:', error);
     return [];
+  }
+};
+
+export const seedGlobalEditais = () => {
+  try {
+    const existing = loadAdminEditais();
+    const existingIds = new Set(existing.map((edital) => edital.id));
+    const missingGlobals = globalEditaisSeed.filter((edital) => !existingIds.has(edital.id));
+
+    if (missingGlobals.length === 0) return false;
+
+    saveToLocalStorage('admin_editais', [...existing, ...missingGlobals]);
+    return true;
+  } catch (error) {
+    console.error('Erro ao carregar editais globais:', error);
+    return false;
   }
 };
 
@@ -39,7 +56,8 @@ export const getAvailableEditais = () => {
     banca: edital.banca,
     dataProva: edital.dataProva,
     materias: edital.materias || [],
-    itensEdital: edital.itensEdital || []
+    itensEdital: edital.itensEdital || [],
+    isGlobal: Boolean(edital.isGlobal)
   }));
 };
 
