@@ -6,7 +6,32 @@ import { GLOBAL_EDITAIS } from '../data/globalEditais';
 import { ChevronDown, ChevronUp, Check, Info } from 'lucide-react';
 import { saveToLocalStorage } from '../utils/localStorage';
 
-const MergedSubjectCard = ({ subject, topics, onToggleTopic }) => {
+// Helper to get consistent color for an edital based on its index in the current selection
+const getEditalColor = (editalId, selectedIds) => {
+    const index = selectedIds.indexOf(editalId);
+    if (index === -1) return "bg-slate-500/20 text-slate-300 border-slate-500/20";
+
+    // Cycle through a few distinct colors
+    const colors = [
+        "bg-sky-500/20 text-sky-300 border-sky-500/20",
+        "bg-emerald-500/20 text-emerald-300 border-emerald-500/20",
+        "bg-violet-500/20 text-violet-300 border-violet-500/20",
+        "bg-pink-500/20 text-pink-300 border-pink-500/20",
+        "bg-orange-500/20 text-orange-300 border-orange-500/20"
+    ];
+
+    return colors[index % colors.length];
+};
+
+const GroupedSubjectCard = ({ subject, topics, onToggleTopic, selectedGlobalEditalIds }) => {
+    if (!topics || topics.length === 0) return null;
+
+    const getTopicColorClass = (topic) => {
+        if (!topic.isUnique) return "border-slate-700/50 bg-slate-800/50";
+        // Unique topics get a generic highlight, but the chips inside show the source
+        return "border-amber-500/20 bg-amber-900/10";
+    };
+
     return (
         <div className="bg-slate-800 border border-slate-700/50 rounded-xl overflow-hidden mb-4">
             <div className="p-4 flex justify-between items-center bg-slate-900/40 cursor-default">
@@ -16,7 +41,6 @@ const MergedSubjectCard = ({ subject, topics, onToggleTopic }) => {
                         {topics.length} tópicos • {subject.editalIds.length} editais
                     </div>
                 </div>
-                {/* Always expanded for now, but keeping icon for visual consistency */}
                 <ChevronUp className="text-slate-400" />
             </div>
 
@@ -24,7 +48,7 @@ const MergedSubjectCard = ({ subject, topics, onToggleTopic }) => {
                 {topics.map(topic => (
                     <div
                         key={topic.id}
-                        className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50 cursor-pointer hover:bg-slate-800 transition-colors"
+                        className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer hover:bg-slate-800 ${getTopicColorClass(topic)}`}
                         onClick={() => onToggleTopic(topic)}
                     >
                         <div className="mt-1">
@@ -46,9 +70,16 @@ const MergedSubjectCard = ({ subject, topics, onToggleTopic }) => {
                                 )}
                                 {topic.editalIds.map(eid => {
                                     const edital = GLOBAL_EDITAIS.find(e => e.id === eid);
+                                    const colorClass = getEditalColor(eid, selectedGlobalEditalIds);
+
+                                    // Use name if banca is missing or "Desconhecida"
+                                    const label = (edital?.banca && edital.banca !== "Desconhecida")
+                                        ? edital.banca
+                                        : (edital?.nome || "Edital").substring(0, 15);
+
                                     return (
-                                        <span key={eid} className="text-[0.65rem] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/20" title={edital?.nome}>
-                                            {edital?.banca || edital?.nome.substring(0, 10)}
+                                        <span key={eid} className={`text-[0.65rem] px-1.5 py-0.5 rounded border ${colorClass}`} title={edital?.nome}>
+                                            {label}
                                         </span>
                                     );
                                 })}
@@ -69,8 +100,7 @@ export const CombinedSyllabusView = () => {
         showToast
     } = useStudyContext();
 
-    // Use activeSyllabusItems in dependency to re-calculate isStudied when items change
-    const mergedData = useMemo(() => {
+    const mergedSubjects = useMemo(() => {
         const selectedEditais = GLOBAL_EDITAIS.filter(e => selectedGlobalEditalIds.includes(e.id));
         return mergeSyllabi(selectedEditais, activeSyllabusItems);
     }, [selectedGlobalEditalIds, activeSyllabusItems]);
@@ -81,37 +111,30 @@ export const CombinedSyllabusView = () => {
 
         setSyllabusItems(prev => {
             let updated = [...prev];
-
-            // For each global ID associated with this merged topic
             globalIdsToUpdate.forEach(globalId => {
                 const existingIndex = updated.findIndex(i => i.globalId === globalId);
-
                 if (existingIndex >= 0) {
-                    // Update existing
                     updated[existingIndex] = { ...updated[existingIndex], isStudied: newStatus };
                 } else if (newStatus) {
-                    // Create new only if we are marking as studied
                     updated.push({
                         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                        name: topic.nome, // Use the merged name
+                        name: topic.nome,
                         globalId: globalId,
                         isStudied: true,
-                        subjectId: "global-progress" // Virtual subject
+                        subjectId: "global-progress"
                     });
                 }
             });
-
             saveToLocalStorage("syllabusItems", updated);
             return updated;
         });
-
-        showToast(newStatus ? "Tópico marcado como estudado!" : "Progresso removido.", "success");
+        showToast(newStatus ? "Tópico marcado!" : "Desmarcado.", "success");
     };
 
     if (selectedGlobalEditalIds.length === 0) {
         return (
             <div className="p-8 text-center text-slate-400 border border-dashed border-slate-700 rounded-xl">
-                Nenhum edital selecionado. Vá para a <a href="/editais" className="text-sky-400 hover:underline">Biblioteca</a> para adicionar.
+                Nenhum edital selecionado.
             </div>
         );
     }
@@ -121,38 +144,24 @@ export const CombinedSyllabusView = () => {
             <div className="flex items-center gap-2 p-4 bg-blue-900/20 border border-blue-500/20 rounded-lg text-blue-200">
                 <Info size={20} />
                 <p className="text-sm">
-                    Visualizando união de {selectedGlobalEditalIds.length} editais.
-                    Tópicos destacados em <span className="text-amber-400 font-bold">Laranja</span> são exclusivos de apenas um dos editais selecionados.
-                    O progresso marcado aqui é salvo globalmente.
+                    Comparando {selectedGlobalEditalIds.length} editais.
+                    Agrupados por matéria similar.
                 </p>
             </div>
 
-            {mergedData.subjects.length > 0 && (
-                <div className="mb-8">
-                    <h3 className="text-lg font-bold text-white mb-4">Matérias Unificadas</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {mergedData.subjects.map((subj, idx) => (
-                             <div key={idx} className="bg-slate-800 p-4 rounded border border-slate-700 flex justify-between">
-                                <span className="text-slate-200 font-medium">{subj.name}</span>
-                                <div className="flex gap-1">
-                                     {subj.editalIds.map(eid => (
-                                         <div key={eid} className="w-2 h-2 rounded-full bg-sky-500" title={eid}></div>
-                                     ))}
-                                </div>
-                             </div>
-                        ))}
-                    </div>
-                </div>
+            {mergedSubjects.length === 0 ? (
+                <div className="text-center text-slate-500">Nenhum tópico encontrado ou erro na fusão.</div>
+            ) : (
+                mergedSubjects.map((subject, idx) => (
+                    <GroupedSubjectCard
+                        key={idx}
+                        subject={subject}
+                        topics={subject.topics}
+                        onToggleTopic={handleToggleTopic}
+                        selectedGlobalEditalIds={selectedGlobalEditalIds}
+                    />
+                ))
             )}
-
-             <div>
-                <h3 className="text-lg font-bold text-white mb-4">Tópicos Unificados</h3>
-                <MergedSubjectCard
-                    subject={{ name: "Todos os Tópicos", editalIds: selectedGlobalEditalIds }}
-                    topics={mergedData.topics}
-                    onToggleTopic={handleToggleTopic}
-                />
-            </div>
         </div>
     );
 };

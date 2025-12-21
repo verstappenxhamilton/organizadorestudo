@@ -2,131 +2,154 @@
 import Fuse from 'fuse.js';
 
 /**
- * Merges multiple syllabi (editais) into a unified structure.
+ * Merges multiple syllabi (editais) into a unified structure, respecting Subject hierarchy.
  *
- * @param {Array} editais - List of Edital objects (from GLOBAL_EDITAIS)
- * @param {Array} userSyllabusItems - List of user's current syllabus items (for progress checking)
- * @returns {Object} { subjects: [], topics: [] } where topics have 'editalIds' and 'isUnique'
+ * @param {Array} editais - List of Edital objects
+ * @param {Array} userSyllabusItems - List of user's current syllabus items
+ * @returns {Array} List of Merged Subjects: [{ name, editalIds, topics: [mergedTopics] }]
  */
 export const mergeSyllabi = (editais, userSyllabusItems = []) => {
-    if (!editais || editais.length === 0) return { subjects: [], topics: [] };
+    if (!editais || editais.length === 0) return [];
 
-    const mergedSubjects = [];
-    const mergedTopics = [];
-
-    // Pre-process user items for faster lookup
-    // We store studied items by globalId AND by normalized name
+    // Pre-process user items
     const studiedItems = userSyllabusItems.filter(i => i.isStudied);
     const studiedGlobalIds = new Set(studiedItems.map(i => i.globalId).filter(Boolean));
     const studiedNames = new Set(studiedItems.map(i => normalizeName(i.name)));
 
     function normalizeName(name) {
         if (!name) return "";
-        return name
-            .toLowerCase()
-            .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove numbering
-            .replace(/^-\s+/, '') // Remove bullets
+        return name.toLowerCase()
+            .replace(/^\d+(\.\d+)*\.?\s+/, '')
+            .replace(/^-\s+/, '')
             .trim();
     }
 
-    // Helper to check if a topic is studied based on user data
-    // 1. Check if any original ID is in studiedGlobalIds
-    // 2. Check if normalized name matches any studied item name (Universal Progress)
     const isTopicStudied = (originalIdsMap, topicName) => {
         const globalIds = Object.values(originalIdsMap);
         if (globalIds.some(id => studiedGlobalIds.has(id))) return true;
-
         const normName = normalizeName(topicName);
-        if (studiedNames.has(normName)) return true;
-
-        return false;
+        return studiedNames.has(normName);
     };
 
-    // 1. Merge Subjects
+    // 1. Cluster Subjects
+    // We want to group "Direito Constitucional" from A with "Dir. Const." from B.
+    const mergedSubjects = [];
+
+    // Collect all raw subjects
+    const allSubjects = [];
     editais.forEach(edital => {
-        edital.materias.forEach(materia => {
-            let existing = mergedSubjects.find(s => s.name.toLowerCase() === materia.nome.toLowerCase());
-
-            if (!existing) {
-                const fuse = new Fuse(mergedSubjects, { keys: ['name'], threshold: 0.3 });
-                const result = fuse.search(materia.nome);
-                if (result.length > 0) {
-                    existing = result[0].item;
-                }
-            }
-
-            if (existing) {
-                if (!existing.editalIds.includes(edital.id)) {
-                    existing.editalIds.push(edital.id);
-                }
-            } else {
-                mergedSubjects.push({
-                    id: materia.id,
-                    name: materia.nome,
-                    editalIds: [edital.id],
-                    originalIds: { [edital.id]: materia.id }
-                });
-            }
+        edital.materias.forEach(m => {
+            allSubjects.push({ ...m, editalId: edital.id });
         });
     });
 
-    // 2. Merge Topics
-    const allTopics = [];
-    editais.forEach(edital => {
-        edital.itensEdital.forEach(item => {
-            allTopics.push({ ...item, editalId: edital.id });
-        });
-    });
+    // Merge subjects
+    allSubjects.forEach(rawSub => {
+        // Try to find existing cluster
+        let match = mergedSubjects.find(ms => ms.name.toLowerCase() === rawSub.nome.toLowerCase());
 
-    const fuseOptions = {
-        keys: ['cleanName'],
-        includeScore: true,
-        threshold: 0.4,
-        ignoreLocation: true
-    };
-
-    allTopics.forEach(topic => {
-        const cleanName = normalizeName(topic.nome);
-
-        let bestMatch = null;
-        let bestScore = 1;
-
-        if (mergedTopics.length > 0) {
-            const fuse = new Fuse(mergedTopics, fuseOptions);
-            const results = fuse.search(cleanName);
-            if (results.length > 0) {
-                bestMatch = results[0].item;
-                bestScore = results[0].score;
+        if (!match) {
+            const fuse = new Fuse(mergedSubjects, { keys: ['name'], threshold: 0.3 });
+            const result = fuse.search(rawSub.nome);
+            if (result.length > 0) {
+                match = result[0].item;
             }
         }
 
-        if (bestMatch && bestScore < 0.3) {
-            if (!bestMatch.editalIds.includes(topic.editalId)) {
-                bestMatch.editalIds.push(topic.editalId);
+        if (match) {
+            if (!match.editalIds.includes(rawSub.editalId)) {
+                match.editalIds.push(rawSub.editalId);
             }
-            bestMatch.originalIds[topic.editalId] = topic.id;
-
-            if (topic.nome.length > bestMatch.nome.length) {
-                bestMatch.nome = topic.nome;
-                bestMatch.cleanName = cleanName;
-            }
+            match.rawIds.push({ editalId: rawSub.editalId, id: rawSub.id });
         } else {
-            mergedTopics.push({
-                id: topic.id,
-                nome: topic.nome,
-                cleanName: cleanName,
-                editalIds: [topic.editalId],
-                originalIds: { [topic.editalId]: topic.id },
-                isStudied: false
+            mergedSubjects.push({
+                name: rawSub.nome,
+                editalIds: [rawSub.editalId],
+                rawIds: [{ editalId: rawSub.editalId, id: rawSub.id }],
+                topics: [] // Will populate next
             });
         }
     });
 
-    // 3. Mark Unique and Calculate Progress
-    mergedTopics.forEach(topic => {
-        topic.isUnique = topic.editalIds.length === 1 && editais.length > 1;
-        topic.isStudied = isTopicStudied(topic.originalIds, topic.nome);
+    // 2. Merge Topics WITHIN Subjects
+    // For each merged subject, we look at the raw subjects it is composed of,
+    // and merge their topics.
+
+    mergedSubjects.forEach(ms => {
+        const relevantTopics = [];
+
+        // Find all topics belonging to this subject cluster
+        ms.rawIds.forEach(ref => {
+            const edital = editais.find(e => e.id === ref.editalId);
+            // In parsed structure: items are in edital.itensEdital and have materiaId
+            // OR in my heuristic parser output I might have put them inside materias?
+            // Let's check parser: `materias` has `id, nome`. `itensEdital` has `materiaId`.
+            // Wait, previous `globalEditais.js` mock had structure.
+            // `parse_editais_manual.cjs` produced:
+            // materias: [{ id, nome }], itensEdital: [{ id, nome, materiaId }]
+
+            const editalTopics = edital.itensEdital.filter(item => item.materiaId === ref.id);
+            editalTopics.forEach(t => {
+                relevantTopics.push({ ...t, editalId: edital.id });
+            });
+        });
+
+        // Now merge these topics
+        const mergedTopics = [];
+        const fuseOptions = {
+            keys: ['cleanName'],
+            includeScore: true,
+            threshold: 0.4,
+            ignoreLocation: true
+        };
+
+        relevantTopics.forEach(topic => {
+            const cleanName = normalizeName(topic.nome);
+            let bestMatch = null;
+            let bestScore = 1;
+
+            if (mergedTopics.length > 0) {
+                const fuse = new Fuse(mergedTopics, fuseOptions);
+                const results = fuse.search(cleanName);
+                if (results.length > 0) {
+                    bestMatch = results[0].item;
+                    bestScore = results[0].score;
+                }
+            }
+
+            if (bestMatch && bestScore < 0.35) {
+                if (!bestMatch.editalIds.includes(topic.editalId)) {
+                    bestMatch.editalIds.push(topic.editalId);
+                }
+                bestMatch.originalIds[topic.editalId] = topic.id;
+                if (topic.nome.length > bestMatch.nome.length) {
+                    bestMatch.nome = topic.nome;
+                    bestMatch.cleanName = cleanName;
+                }
+            } else {
+                mergedTopics.push({
+                    id: topic.id,
+                    nome: topic.nome,
+                    cleanName: cleanName,
+                    editalIds: [topic.editalId],
+                    originalIds: { [topic.editalId]: topic.id },
+                    isStudied: false
+                });
+            }
+        });
+
+        // Finalize topics
+        mergedTopics.forEach(topic => {
+            topic.isUnique = topic.editalIds.length === 1 && editais.length > 1;
+            topic.isStudied = isTopicStudied(topic.originalIds, topic.nome);
+
+            // Determine source type for coloring
+            // We assume a 2-way comparison mainly, but logic works for N.
+            // If editalIds contains A but not B -> Unique A
+        });
+
+        ms.topics = mergedTopics;
     });
 
-    return { subjects: mergedSubjects, topics: mergedTopics };
+    return mergedSubjects;
 };
