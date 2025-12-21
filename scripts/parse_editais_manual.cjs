@@ -1,4 +1,3 @@
-
 const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
@@ -6,7 +5,7 @@ const pdf = require('pdf-parse');
 const EDITAIS_DIR = './editais';
 const OUTPUT_FILE = './src/data/parsedEditais.json';
 
-// Helper to normalize text
+// Utility to normalize text
 function normalize(text) {
     return text.replace(/\s+/g, ' ').trim();
 }
@@ -17,91 +16,116 @@ async function parsePdf(filePath) {
     return data.text;
 }
 
-function heuristics(text, fileName) {
+function advancedHeuristics(text, fileName) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    // Clean up lines (remove page numbers, etc.)
+    const cleanLines = lines.filter(l => !/^\d+\s*of\s*\d+$/i.test(l) && !/^Página\s+\d+/i.test(l));
+
     const subjects = [];
     let currentSubject = null;
     let topics = [];
 
-    // Strategy: Look for blocks.
-    // Many editais have "CONHECIMENTOS ESPECÍFICOS" or subject names in CAPS.
-    // This is very brittle, but better than nothing.
+    // Regex for Subject Headers
+    // 1. "DIREITO X" (Common)
+    // 2. "LÍNGUA PORTUGUESA", "INFORMÁTICA", etc.
+    // 3. Must be short (< 60 chars)
+    // 4. Often All Caps
+    const subjectRegex = /^(DIREITO\s+[A-ZÀ-Ú]+(\s+[A-ZÀ-Ú]+)*|LÍNGUA\s+PORTUGUESA|RACIOCÍNIO\s+LÓGICO|INFORMÁTICA|LEGISLAÇÃO\s+[A-ZÀ-Ú]+|CONHECIMENTOS\s+[A-ZÀ-Ú]+|NOÇÕES\s+DE\s+[A-ZÀ-Ú]+|HUMANÍSTICA|ÉTICA|ESTATUTO|DIREITOS\s+HUMANOS)$/i;
 
-    // Attempt 1: Split by "Direito..." or typical subject names
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // Regex for Topics
+    // 1. Starts with Number "1.", "1.1", "1)", "I -", "a)"
+    const topicStartRegex = /^(\d+(\.\d+)*\.?|[IVX]+\s*[-–.]|[a-z]\))\s+/;
 
-    // Common subject starters
-    const subjectPatterns = [
-        /^DIREITO\s+/i,
-        /^LÍNGUA PORTUGUESA/i,
-        /^RACIOCÍNIO LÓGICO/i,
-        /^INFORMÁTICA/i,
-        /^LEGISLAÇÃO/i,
-        /^CONHECIMENTOS/i,
-        /^NOÇÕES DE/i
-    ];
+    cleanLines.forEach(line => {
+        // Is it a Subject?
+        // Heuristic: Short, matches specific keywords OR is ALL CAPS and looks like a header (not a sentence)
+        const isSubjectHeader = (
+            (subjectRegex.test(line) && line.length < 60) ||
+            (line === line.toUpperCase() && line.length > 4 && line.length < 40 && !line.match(/\.$/) && !line.match(/^\d/))
+        );
 
-    lines.forEach(line => {
-        // Check if line looks like a subject header
-        const isSubject = subjectPatterns.some(p => p.test(line)) && line.length < 100 && !line.match(/^\d/);
-
-        if (isSubject) {
+        if (isSubjectHeader) {
+            // Save previous
             if (currentSubject) {
-                subjects.push({
-                    name: currentSubject,
-                    topics: [...topics]
-                });
+                subjects.push({ name: currentSubject, topics: [...topics] });
             }
             currentSubject = normalize(line);
             topics = [];
         } else if (currentSubject) {
-            // It's a topic
-            // Filter out page numbers or short trash
-            if (line.length > 5 && !line.match(/^Página/i)) {
-                // Try to detect topic start (digits)
-                if (line.match(/^\d/) || line.match(/^[a-z]\)/) || line.match(/^-/)) {
-                     topics.push(normalize(line));
+            // Processing Topics
+            // Check if line starts with a number/bullet
+            if (topicStartRegex.test(line)) {
+                // New Topic
+                topics.push(normalize(line));
+            } else {
+                // Continuation of previous topic? OR a new topic implicitly?
+                // If the previous line ended with ".", likely new topic (even if missing number).
+                // If previous line ended with ";", definitely continuation or next item in list.
+                // Let's assume continuation if it doesn't look like a header.
+
+                if (topics.length > 0) {
+                     // Check if previous topic is very long, maybe we are appending incorrectly?
+                     // Actually, many editais split lines mid-sentence.
+                     const lastTopic = topics[topics.length - 1];
+                     if (!lastTopic.endsWith('.')) {
+                         topics[topics.length - 1] += " " + normalize(line);
+                     } else {
+                         // Previous ended with dot. Does this look like a new sentence?
+                         // If it starts with Uppercase, treat as new topic (implicit bullet).
+                         // BUT, might be a sub-sentence.
+                         // Let's be conservative: Append if it's short, else new.
+                         topics.push(normalize(line));
+                     }
                 } else {
-                    // Append to previous topic if it looks like continuation
-                    if (topics.length > 0) {
-                        topics[topics.length - 1] += " " + normalize(line);
-                    } else {
-                        topics.push(normalize(line));
-                    }
+                    topics.push(normalize(line));
                 }
             }
         }
     });
 
-    // Push last
+    // Save last
     if (currentSubject) {
+        subjects.push({ name: currentSubject, topics: [...topics] });
+    }
+
+    // Post-Processing: Split topics by semicolon if they are massive blocks
+    // Many editais list: "1. Topic A; Topic B; Topic C."
+    subjects.forEach(sub => {
+        const expandedTopics = [];
+        sub.topics.forEach(t => {
+            if (t.length > 200 && t.includes(';')) {
+                const parts = t.split(';').map(p => p.trim()).filter(p => p.length > 0);
+                // Keep the numbering on the first one, maybe add bullets to others?
+                // Or just treat them as subtopics.
+                parts.forEach(p => expandedTopics.push(p));
+            } else {
+                expandedTopics.push(t);
+            }
+        });
+        sub.topics = expandedTopics;
+    });
+
+    // Fallback: If no subjects found (weird edital), try to find ANY structure
+    if (subjects.length === 0) {
         subjects.push({
-            name: currentSubject,
-            topics: [...topics]
+            name: "Conteúdo Geral",
+            topics: cleanLines.filter(l => topicStartRegex.test(l))
         });
     }
 
-    // Fallback if no subjects found (try to treat whole file as mixed topics if small?)
-    // Or simpler: Just create a "Geral" subject
-    if (subjects.length === 0) {
-        subjects.push({
-            name: "Conteúdo do Edital",
-            topics: lines.filter(l => l.length > 10 && l.match(/^\d/)) // Heuristic: lines starting with number
-        });
-    }
+    // Filter garbage subjects (e.g. "PÁGINA 1")
+    const cleanSubjects = subjects.filter(s => s.topics.length > 0 && !s.name.match(/Página/i));
 
     return {
         id: path.basename(fileName, '.pdf').replace(/\s+/g, '-').toLowerCase(),
         nome: path.basename(fileName, '.pdf'),
-        concurso: path.basename(fileName, '.pdf'), // Fallback
+        concurso: path.basename(fileName, '.pdf'),
         banca: "Desconhecida",
-        itensEdital: [], // We will populate flat list too if needed
-        materias: subjects.map((s, idx) => ({
-            id: `subj-${idx}`,
+        materias: cleanSubjects.map((s, idx) => ({
+            id: `m-${idx}`,
             nome: s.name,
-            topics: s.topics.map((t, tidx) => ({
-                id: `topic-${idx}-${tidx}`,
-                nome: t
-            }))
+            topics: s.topics // temporary holding
         }))
     };
 }
@@ -116,25 +140,14 @@ async function run() {
         console.log(`Parsing ${file}...`);
         try {
             const text = await parsePdf(path.join(EDITAIS_DIR, file));
-            const parsed = heuristics(text, file);
+            const parsed = advancedHeuristics(text, file);
             results.push(parsed);
         } catch (e) {
             console.error(`Error parsing ${file}:`, e);
         }
     }
 
-    // Transform into the structure expected by the app (GLOBAL_EDITAIS format)
-    // The app expects: { id, nome, materias: [{id, nome}], itensEdital: [{id, nome}] }
-    // BUT our new Requirement needs hierarchy: Subject -> Topics.
-    // So I will update GLOBAL_EDITAIS structure to be hierarchical OR update the parser to flatten.
-    // Better to keep hierarchy for the "Group by Subject" requirement.
-
-    // Let's stick to the structure:
-    // materias: [{ id, nome, topics: [] }] -> NO, existing structure was separate.
-    // I will Hybridize:
-    // materias: [{ id, nome }]
-    // itensEdital: [{ id, nome, materiaId }] (Link them!)
-
+    // Flatten structure for the app
     const finalData = results.map(r => {
         const materias = [];
         const itensEdital = [];
@@ -143,11 +156,11 @@ async function run() {
             const mId = `${r.id}-m-${mIdx}`;
             materias.push({ id: mId, nome: m.nome });
 
-            m.topics.forEach((t, tIdx) => {
+            m.topics.forEach((tName, tIdx) => {
                 itensEdital.push({
                     id: `${r.id}-t-${mIdx}-${tIdx}`,
-                    nome: t.nome,
-                    materiaId: mId // Link!
+                    nome: tName,
+                    materiaId: mId
                 });
             });
         });

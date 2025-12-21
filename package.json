@@ -17,7 +17,8 @@
     "format:check": "prettier --check src/**/*.{js,jsx,json,css,md}",
     "start": "npm run dev",
     "deploy:build": "npm run build",
-    "serve": "npm run preview"
+    "serve": "npm run preview",
+    "parse-editais": "node scripts/parse_editais_manual.cjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
