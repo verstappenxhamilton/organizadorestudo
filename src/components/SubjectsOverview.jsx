@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import parsedEditais from '../data/parsedEditais.json';
 import { saveToLocalStorage } from "../utils/localStorage";
+import Fuse from 'fuse.js';
 
 /* --- MODERN UI STYLES --- */
 const STYLES = `
@@ -564,6 +565,11 @@ const calculateNextReviewDate = (accuracy) => {
 
 /* --- COMPARISON COMPONENT --- */
 
+// Helper to remove numbers for fuzzy matching ("1. Direito..." -> "Direito...")
+const cleanTextForMatching = (text) => {
+    return text.replace(/^(\d+(\.\d+)*\.?|[IVX]+\s*[-–.]|[a-z]\))\s+/i, '').trim();
+};
+
 const ComparisonSubjectCard = ({
     subject,
     userTopics,
@@ -573,46 +579,79 @@ const ComparisonSubjectCard = ({
     const [isExpanded, setIsExpanded] = useState(false);
 
     const mergedTopics = useMemo(() => {
-        const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-
         const merged = [];
-        const userMap = new Map();
 
-        userTopics.forEach(t => {
-            const key = t.canonicalId || normalize(t.name);
-            userMap.set(key, t);
-        });
+        // 1. Prepare Fuse Index for fuzzy matching
+        // We index comparisonTopics. We search using User Topics.
+        const options = {
+            includeScore: true,
+            keys: ['cleanText', 'nome'],
+            threshold: 0.25, // Lower = stricter. 0.25 allows minor typos/formatting diffs (e.g. n. vs nº)
+            ignoreLocation: true
+        };
 
-        comparisonTopics.forEach(t => {
-            const key = t.canonicalId || normalize(t.nome || t.name);
+        // Pre-process comparison topics for better matching
+        const enrichedComparison = comparisonTopics.map(t => ({
+            ...t,
+            cleanText: cleanTextForMatching(t.nome || t.name)
+        }));
 
-            if (userMap.has(key)) {
-                const userTopic = userMap.get(key);
+        const fuse = new Fuse(enrichedComparison, options);
+
+        // Track matched comparison IDs to know which are left over
+        const matchedComparisonIds = new Set();
+        const userMap = new Map(); // Use map to prevent duplicates if necessary
+
+        // 2. Iterate User Topics and Match
+        userTopics.forEach(userTopic => {
+            const userClean = cleanTextForMatching(userTopic.name);
+
+            // First check canonical ID if available (ML brain)
+            let matchedTarget = null;
+
+            if (userTopic.canonicalId) {
+                matchedTarget = comparisonTopics.find(t => t.canonicalId === userTopic.canonicalId);
+            }
+
+            // Fallback to Fuzzy Search
+            if (!matchedTarget) {
+                const results = fuse.search(userClean);
+                if (results.length > 0) {
+                    matchedTarget = results[0].item;
+                }
+            }
+
+            if (matchedTarget) {
                 merged.push({
                     id: userTopic.id,
                     name: userTopic.name,
                     status: 'shared',
                     userTopic,
-                    targetTopic: t
+                    targetTopic: matchedTarget
                 });
-                userMap.delete(key);
+                matchedComparisonIds.add(matchedTarget.id);
             } else {
                 merged.push({
-                    id: t.id,
-                    name: t.nome || t.name,
-                    status: 'target-only',
-                    targetTopic: t
+                    id: userTopic.id,
+                    name: userTopic.name,
+                    status: 'base-only',
+                    userTopic,
+                    targetTopic: null
                 });
             }
         });
 
-        userMap.forEach((t) => {
-            merged.push({
-                id: t.id,
-                name: t.name,
-                status: 'base-only',
-                userTopic: t
-            });
+        // 3. Add Remaining Comparison Topics
+        comparisonTopics.forEach(t => {
+            if (!matchedComparisonIds.has(t.id)) {
+                 merged.push({
+                    id: t.id,
+                    name: t.nome || t.name,
+                    status: 'target-only',
+                    userTopic: null,
+                    targetTopic: t
+                });
+            }
         });
 
         return merged.sort((a, b) => a.name.localeCompare(b.name));

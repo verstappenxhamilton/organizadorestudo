@@ -17,3 +17,4 @@ Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
 10:33:01 PM [vite] hmr update /src/components/SubjectsOverview.jsx, /src/index.css
 11:21:03 PM [vite] hmr update /src/pages/Subjects.jsx, /src/index.css, /src/components/EditalLibrary.jsx, /src/components/SubjectsOverview.jsx, /src/components/EditalSelector.jsx
 11:21:03 PM [vite] hmr update /src/pages/Subjects.jsx, /src/index.css, /src/components/EditalLibrary.jsx, /src/components/SubjectsOverview.jsx, /src/components/EditalSelector.jsx
+12:25:08 AM [vite] hmr update /src/components/SubjectsOverview.jsx, /src/index.css
