@@ -1,5 +1,6 @@
 
 import Fuse from 'fuse.js';
+import { cosineSimilarity } from './semanticMatcher';
 
 /**
  * Merges multiple syllabi (editais) into a unified structure, respecting Subject hierarchy.
@@ -32,10 +33,7 @@ export const mergeSyllabi = (editais, userSyllabusItems = []) => {
     };
 
     // 1. Cluster Subjects
-    // We want to group "Direito Constitucional" from A with "Dir. Const." from B.
     const mergedSubjects = [];
-
-    // Collect all raw subjects
     const allSubjects = [];
     editais.forEach(edital => {
         edital.materias.forEach(m => {
@@ -43,11 +41,8 @@ export const mergeSyllabi = (editais, userSyllabusItems = []) => {
         });
     });
 
-    // Merge subjects
     allSubjects.forEach(rawSub => {
-        // Try to find existing cluster
         let match = mergedSubjects.find(ms => ms.name.toLowerCase() === rawSub.nome.toLowerCase());
-
         if (!match) {
             const fuse = new Fuse(mergedSubjects, { keys: ['name'], threshold: 0.3 });
             const result = fuse.search(rawSub.nome);
@@ -66,35 +61,22 @@ export const mergeSyllabi = (editais, userSyllabusItems = []) => {
                 name: rawSub.nome,
                 editalIds: [rawSub.editalId],
                 rawIds: [{ editalId: rawSub.editalId, id: rawSub.id }],
-                topics: [] // Will populate next
+                topics: []
             });
         }
     });
 
     // 2. Merge Topics WITHIN Subjects
-    // For each merged subject, we look at the raw subjects it is composed of,
-    // and merge their topics.
-
     mergedSubjects.forEach(ms => {
         const relevantTopics = [];
-
-        // Find all topics belonging to this subject cluster
         ms.rawIds.forEach(ref => {
             const edital = editais.find(e => e.id === ref.editalId);
-            // In parsed structure: items are in edital.itensEdital and have materiaId
-            // OR in my heuristic parser output I might have put them inside materias?
-            // Let's check parser: `materias` has `id, nome`. `itensEdital` has `materiaId`.
-            // Wait, previous `globalEditais.js` mock had structure.
-            // `parse_editais_manual.cjs` produced:
-            // materias: [{ id, nome }], itensEdital: [{ id, nome, materiaId }]
-
             const editalTopics = edital.itensEdital.filter(item => item.materiaId === ref.id);
             editalTopics.forEach(t => {
                 relevantTopics.push({ ...t, editalId: edital.id });
             });
         });
 
-        // Now merge these topics
         const mergedTopics = [];
         const fuseOptions = {
             keys: ['cleanName'],
@@ -106,31 +88,55 @@ export const mergeSyllabi = (editais, userSyllabusItems = []) => {
         relevantTopics.forEach(topic => {
             const cleanName = normalizeName(topic.nome);
             let bestMatch = null;
-            let bestScore = 1;
+            let bestScore = -1;
 
-            if (mergedTopics.length > 0) {
-                const fuse = new Fuse(mergedTopics, fuseOptions);
-                const results = fuse.search(cleanName);
-                if (results.length > 0) {
-                    bestMatch = results[0].item;
-                    bestScore = results[0].score;
+            // Semantic Match First
+            if (topic.embedding) {
+                for (const existing of mergedTopics) {
+                    if (existing.embedding) {
+                        const score = cosineSimilarity(topic.embedding, existing.embedding);
+                        // console.log(`Comparing ${topic.nome} vs ${existing.nome}: ${score}`);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMatch = existing;
+                        }
+                    }
+                }
+
+                if (bestScore < 0.85) {
+                    bestMatch = null;
                 }
             }
 
-            if (bestMatch && bestScore < 0.35) {
+            // Fallback to Fuzzy if no semantic match
+            if (!bestMatch && mergedTopics.length > 0) {
+                const fuse = new Fuse(mergedTopics, fuseOptions);
+                const results = fuse.search(cleanName);
+                if (results.length > 0) {
+                    const fMatch = results[0];
+                    if (fMatch.score < 0.35) {
+                        bestMatch = fMatch.item;
+                    }
+                }
+            }
+
+            if (bestMatch) {
                 if (!bestMatch.editalIds.includes(topic.editalId)) {
                     bestMatch.editalIds.push(topic.editalId);
                 }
                 bestMatch.originalIds[topic.editalId] = topic.id;
+                // Keep longest name
                 if (topic.nome.length > bestMatch.nome.length) {
                     bestMatch.nome = topic.nome;
                     bestMatch.cleanName = cleanName;
+                    if (topic.embedding) bestMatch.embedding = topic.embedding;
                 }
             } else {
                 mergedTopics.push({
                     id: topic.id,
                     nome: topic.nome,
                     cleanName: cleanName,
+                    embedding: topic.embedding,
                     editalIds: [topic.editalId],
                     originalIds: { [topic.editalId]: topic.id },
                     isStudied: false
@@ -138,14 +144,10 @@ export const mergeSyllabi = (editais, userSyllabusItems = []) => {
             }
         });
 
-        // Finalize topics
+        // Finalize
         mergedTopics.forEach(topic => {
             topic.isUnique = topic.editalIds.length === 1 && editais.length > 1;
             topic.isStudied = isTopicStudied(topic.originalIds, topic.nome);
-
-            // Determine source type for coloring
-            // We assume a 2-way comparison mainly, but logic works for N.
-            // If editalIds contains A but not B -> Unique A
         });
 
         ms.topics = mergedTopics;
