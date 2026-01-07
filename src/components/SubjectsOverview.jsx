@@ -45,34 +45,54 @@ const STYLES = `
     width: 100%;
   }
 
-  /* CARD BASE (Desktop Default) */
+  /* CARD BASE */
   .subject-card {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
     overflow: hidden;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 
-  .subject-card:hover {
+  /* DESIGN IMPROVEMENT: Closed State */
+  .subject-card:not(.expanded) {
+    background: linear-gradient(145deg, var(--bg-card) 0%, #1a2436 100%);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .subject-card:not(.expanded):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
     border-color: var(--border-focus);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(145deg, var(--bg-card-hover) 0%, var(--bg-card) 100%);
+  }
+
+  .subject-card:not(.expanded) .header-title {
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
 
   /* HEADER SECTION */
   .card-header {
-    padding: 16px;
+    padding: 18px 20px;
     cursor: pointer;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.03), transparent);
+    background: transparent;
+  }
+
+  .expanded .card-header {
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(0,0,0,0.2);
+    padding-bottom: 24px;
   }
 
   .header-main {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   .header-title-group {
@@ -80,66 +100,81 @@ const STYLES = `
   }
 
   .header-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0 0 4px 0;
     line-height: 1.3;
+    transition: color 0.2s;
   }
 
   .header-chevron {
     color: var(--text-secondary);
-    padding: 4px;
-    border-radius: 6px;
+    padding: 6px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s;
   }
   .card-header:hover .header-chevron {
     background: rgba(255,255,255,0.1);
     color: white;
+    border-color: rgba(255,255,255,0.1);
   }
 
   /* PROGRESS BAR */
   .progress-track {
-    height: 6px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 3px;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255,255,255,0.05);
   }
   
   .progress-fill {
     height: 100%;
-    background: var(--accent-primary);
-    border-radius: 3px;
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(90deg, var(--accent-primary) 0%, #60a5fa 100%);
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
   }
 
   /* STATS PILLS */
   .stats-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
   }
 
   .stat-pill {
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-secondary);
-    background: rgba(0, 0, 0, 0.2);
-    padding: 4px 10px;
-    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.4);
+    padding: 6px 12px;
+    border-radius: 8px;
     border: 1px solid var(--border-subtle);
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .subject-card:not(.expanded):hover .stat-pill {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255,255,255,0.1);
+    color: var(--text-primary);
   }
 
   /* EXPANDED CONTENT AREA */
   .expanded-content {
     border-top: 1px solid var(--border-subtle);
-    background: rgba(0, 0, 0, 0.1);
-    animation: fadeIn 0.2s ease-out;
+    background: rgba(0, 0, 0, 0.15);
+    animation: fadeIn 0.3s ease-out;
   }
 
   @keyframes fadeIn {
@@ -149,33 +184,39 @@ const STYLES = `
 
   /* ACTION TOOLBAR */
   .toolbar {
-    padding: 12px 16px;
+    padding: 16px 20px;
     background: var(--bg-contrast);
     border-bottom: 1px solid var(--border-subtle);
     display: flex;
-    gap: 10px;
+    gap: 12px;
     overflow-x: auto;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
   }
   .toolbar::-webkit-scrollbar { display: none; }
 
   .btn-action {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
+    gap: 8px;
+    padding: 8px 16px;
     border-radius: 8px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
     border: 1px solid transparent;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.2s;
   }
-  .btn-action span { display: inline-block; }
 
-  .btn-action.primary { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
-  .btn-action.primary:hover { background: rgba(59, 130, 246, 0.2); }
+  .btn-action.primary {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+  .btn-action.primary:hover {
+    background: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+  }
 
   .btn-action.info { background: rgba(6, 182, 212, 0.1); color: #22d3ee; border-color: rgba(6, 182, 212, 0.3); }
   .btn-action.info:hover { background: rgba(6, 182, 212, 0.2); }
@@ -196,17 +237,19 @@ const STYLES = `
   .filter-bar {
     display: flex;
     gap: 8px;
-    padding: 12px 16px;
+    padding: 12px 20px;
     overflow-x: auto;
     scrollbar-width: none;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--border-subtle);
   }
   .filter-bar::-webkit-scrollbar { display: none; }
 
   .filter-chip {
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--border-subtle);
@@ -215,7 +258,7 @@ const STYLES = `
     transition: all 0.2s;
   }
   
-  .filter-chip:hover { background: rgba(255,255,255,0.05); }
+  .filter-chip:hover { background: rgba(255,255,255,0.05); color: white; }
   
   .filter-chip.active {
     background: var(--accent-primary);
@@ -226,49 +269,50 @@ const STYLES = `
 
   /* SYLLABUS LIST */
   .syllabus-container {
-    padding-bottom: 12px;
+    padding-bottom: 16px;
   }
 
   .syllabus-row {
     display: flex;
     align-items: center;
-    padding: 12px 16px;
+    padding: 14px 20px;
     border-bottom: 1px solid var(--border-subtle);
     transition: background 0.1s;
   }
   .syllabus-row:last-child { border-bottom: none; }
-  .syllabus-row:hover { background: rgba(255,255,255,0.02); }
+  .syllabus-row:hover { background: rgba(255,255,255,0.03); }
 
   .item-content {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
 
   .item-title-row {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
   }
 
   .item-status-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    width: 16px;
+    height: 16px;
+    border-radius: 4px; /* Soft square check */
+    border: 1px solid rgba(148, 163, 184, 0.4);
     background: rgba(2, 6, 23, 0.35);
     flex: 0 0 auto;
     margin-top: 2px;
     position: relative;
+    transition: all 0.2s;
   }
 
   .item-status-dot.is-studied {
     border-color: rgba(16, 185, 129, 0.9);
     background: rgba(16, 185, 129, 0.95);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
   }
 
   .item-status-dot.is-studied::after {
@@ -285,31 +329,31 @@ const STYLES = `
 
   .item-title {
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     line-height: 1.4;
     font-weight: 500;
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  .item-title.bold { font-weight: 700; color: white; font-size: 0.95rem; }
-  .item-title.sub { font-weight: 400; color: var(--text-secondary); font-size: 0.85rem; }
+  .item-title.bold { font-weight: 700; color: white; }
+  .item-title.sub { font-weight: 400; color: var(--text-secondary); font-size: 0.9rem; }
 
   .item-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
     flex-shrink: 0;
-    margin-left: 10px;
+    margin-left: 12px;
     max-width: min(220px, 45%);
   }
 
   .badge {
     font-size: 0.7rem;
     font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
     min-width: 32px;
     text-align: center;
   }
@@ -324,15 +368,16 @@ const STYLES = `
     justify-content: center;
     background: transparent;
     border: none;
+    transition: all 0.2s;
   }
   .icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
 
   /* EDIT MODE */
   .edit-mode {
-    padding: 12px 16px;
+    padding: 12px 20px;
     background: var(--bg-contrast);
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
     border-bottom: 1px solid var(--border-subtle);
   }
@@ -340,23 +385,26 @@ const STYLES = `
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     color: white;
-    padding: 6px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
-    font-size: 0.8rem;
-    width: 70px;
+    font-size: 0.85rem;
+    width: 80px;
+  }
+  .edit-input:focus {
+    border-color: var(--accent-primary);
+    outline: none;
   }
   .edit-mode .btn-action {
     flex: 0 0 auto;
-    padding: 6px 10px;
+    padding: 6px 12px;
     min-width: 0;
   }
 
   /* --- MOBILE SPECIFIC (< 640px) --- */
   @media (max-width: 640px) {
-    /* Reset Container padding influence */
     .subjects-container {
       gap: 12px;
-      width: calc(100% + 24px); /* Counteract typical 12px padding */
+      width: calc(100% + 24px);
       margin-left: -12px;
       margin-right: -12px;
     }
@@ -366,35 +414,42 @@ const STYLES = `
       border-left: none;
       border-right: none;
       border-top: none;
-      border-bottom: 1px solid rgba(255,255,255,0.1); /* Single clean line */
-      background: rgba(30, 41, 59, 0.4); /* Slightly transparent on mobile */
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: var(--bg-card);
       margin-bottom: 0;
+      box-shadow: none;
     }
-    
+
+    .subject-card:not(.expanded) {
+        background: rgba(30, 41, 59, 0.6);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
     .card-header {
-      padding: 16px 12px;
+      padding: 16px;
     }
 
     .header-main {
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .header-title {
-      font-size: 1rem;
+      font-size: 1.05rem;
     }
 
     .toolbar {
-      padding: 12px;
+      padding: 12px 16px;
       gap: 8px;
     }
     .btn-action {
       padding: 8px 12px;
       flex: 1;
       justify-content: center;
+      font-size: 0.8rem;
     }
 
     .syllabus-row {
-      padding: 12px;
+      padding: 12px 16px;
     }
 
     .item-actions {
@@ -407,24 +462,9 @@ const STYLES = `
       padding: 4px;
     }
     
-    .item-title {
-      font-size: 0.85rem;
-    }
-    
-    .badge {
-      padding: 2px 4px;
-      font-size: 0.65rem;
-      min-width: auto;
-    }
-
     .edit-mode {
       flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .edit-mode .btn-action {
-      flex: 0 0 auto;
-      padding: 6px 10px;
+      gap: 8px;
     }
   }
 `;
@@ -551,7 +591,7 @@ const SyllabusItem = React.memo(({
       <div
         className="syllabus-row"
         style={{
-          paddingLeft: `calc(16px + (${hierarchyLevel} * 12px))`,
+          paddingLeft: `calc(20px + (${hierarchyLevel} * 12px))`,
           ...weightStyles,
         }}
       >
@@ -614,7 +654,7 @@ const SyllabusItem = React.memo(({
 
       {isEditing && (
         <div className="edit-mode">
-          <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+          <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
             Editar:
           </span>
           <input
@@ -633,7 +673,7 @@ const SyllabusItem = React.memo(({
           />
           <button
             className="btn-action success"
-            style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+            style={{ padding: "6px 12px", fontSize: "0.8rem", background: "rgba(16, 185, 129, 0.2)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.3)" }}
             onClick={() => {
               if (onSaveAccAndWeight) {
                 onSaveAccAndWeight(item.id, tempAccuracy, tempWeight);
@@ -649,19 +689,19 @@ const SyllabusItem = React.memo(({
 
           <button
             className={`btn-action ${isStudied ? "success" : "secondary"}`}
-            style={{ padding: "4px", fontSize: "0.75rem", display: "flex", alignItems: "center" }}
+            style={{ padding: "6px", fontSize: "0.8rem", display: "flex", alignItems: "center" }}
             onClick={(e) => {
               e.stopPropagation();
               if (onToggleStudied) onToggleStudied(item.id);
             }}
             title={isStudied ? "Marcar como não estudado" : "Marcar como estudado"}
           >
-            {isStudied ? <CheckSquare size={16} /> : <Square size={16} />}
+            {isStudied ? <CheckSquare size={18} /> : <Square size={18} />}
           </button>
 
           <button
             className="btn-action secondary"
-            style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+            style={{ padding: "6px 12px", fontSize: "0.8rem" }}
             onClick={onCancelEdit}
           >
             X
@@ -728,7 +768,7 @@ const SubjectCard = React.memo(({
   const hours = getSubjectStudyTime(subject.id);
 
   return (
-    <div className="subject-card">
+    <div className={`subject-card ${isExpanded ? 'expanded' : ''}`}>
       <div className="card-header" onClick={() => onToggleExpand(subject.id)}>
         <div className="header-main">
           <div className="header-title-group">
@@ -744,12 +784,22 @@ const SubjectCard = React.memo(({
         </div>
 
         <div className="stats-row">
-          <div className="stat-pill">Progresso: {progress.toFixed(0)}%</div>
-          <div className="stat-pill">
-            {studiedItems.length}/{subjectItems.length} tópicos
+          <div className="stat-pill" title="Progresso Geral">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Progresso:</span>
+             {progress.toFixed(0)}%
           </div>
-          <div className="stat-pill">Média: {avgAccuracy.toFixed(0)}%</div>
-          <div className="stat-pill">{hours.toFixed(1)}h</div>
+          <div className="stat-pill">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Tópicos:</span>
+             {studiedItems.length}/{subjectItems.length}
+          </div>
+          <div className="stat-pill hidden xs:flex">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Média:</span>
+             {avgAccuracy.toFixed(0)}%
+          </div>
+          <div className="stat-pill">
+             <span className="text-slate-400 text-[10px] uppercase font-bold mr-1">Tempo:</span>
+             {hours.toFixed(1)}h
+          </div>
         </div>
       </div>
 
@@ -850,7 +900,7 @@ const SubjectCard = React.memo(({
                   onCancelEdit={() => setEditingItemId(null)}
                   onViewDetails={onViewItemDetails}
                   onSaveAccuracy={onSaveItemAccuracy}
-                  onSaveWeight={onSaveItemWeight}
+                  onSaveItemWeight={onSaveItemWeight}
                   onSaveAccAndWeight={onSaveAccAndWeight}
                   onToggleStudied={onToggleStudied}
                   maxWeightForSubject={maxWeight}

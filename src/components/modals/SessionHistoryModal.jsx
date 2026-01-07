@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 export const SessionHistoryModal = ({
     isOpen,
@@ -29,27 +30,10 @@ export const SessionHistoryModal = ({
             title: 'Confirmar Exclusão',
             message: 'Tem certeza que deseja deletar esta sessão de estudo?',
             onConfirm: () => {
-                // Confirmation is handled in App.jsx (via confirmationDialog prop), but the logic for deleting
-                // is likely in App.jsx. wait, App.jsx passes `setConfirmationDialog`. The `onConfirm` here
-                // needs to trigger the deletion. But `handleDeleteSession` logic IS NOT passed as a prop!
-                // In the original file, it was just setting state, but the actual deletion logic was...
-                // Wait, looking at original Modals.jsx lines 703-712:
-                /*
-                  onConfirm: () => {
-                    // Aqui seria implementada a função de deletar sessão
-                    setConfirmationDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-                  }
-                */
-                // It seems the original code was incomplete or missing the actual delete call!
-                // I should fix this if I can, but for now I will strictly copy the behavior to not introduce bugs,
-                // although I see this is a placeholder. 
-                // Actually, I should probably expose the delete function from useStudyData and pass it here?
-                // But App.jsx didn't pass a delete function for sessions to this modal?
-                // Let's check App.jsx again later. For now, I'll copy the existing code.
+                // TODO: Implement delete logic
                 setConfirmationDialog({ isOpen: false, title: '', message: '', onConfirm: () => { } });
             }
         });
-        // Correction: In App.jsx, I don't see handleSessionDelete exposed. I will check this later.
     };
 
     // Styles
@@ -64,7 +48,7 @@ export const SessionHistoryModal = ({
         marginBottom: '8px'
     };
 
-    return (
+    return createPortal(
         <div className="modal-overlay" onClick={(e) => {
             if (e.target === e.currentTarget) {
                 onClose();
@@ -194,6 +178,7 @@ export const SessionHistoryModal = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

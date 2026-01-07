@@ -211,17 +211,26 @@ export const Calendar = ({
     /* Mobile */
     @media (max-width: 640px) {
       .calendar-wrapper { 
-        gap: 16px; 
-        /* Match SubjectsOverview full bleed exactly */
-        margin-left: -12px;
-        margin-right: -12px;
-        width: calc(100% + 24px);
+        gap: 12px;
+        width: 100%;
+        margin: 0;
       } 
-      .calendar-card, .agenda-card { border-radius: 0; border-left: none; border-right: none; padding: 16px; }
+      .calendar-card, .agenda-card {
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        padding: 10px; /* Reduced padding to maximize horizontal space */
+      }
       .cal-title { font-size: 1.1rem; }
-      .day-num { width: 20px; height: 20px; font-size: 0.8rem; }
-      .day-cell { padding: 4px; border-radius: 8px; }
+      /* Ensure grid takes full width and cells are manageable */
+      .cal-grid {
+        gap: 2px;
+      }
+      .day-num { width: 20px; height: 20px; font-size: 0.8rem; margin-bottom: 2px; }
+      .day-cell { padding: 2px; border-radius: 6px; min-height: 32px; }
       .pill { width: 3px; height: 3px; }
+
+      .cal-nav { padding: 2px; }
+      .nav-btn { padding: 4px; }
     }
   `;
 

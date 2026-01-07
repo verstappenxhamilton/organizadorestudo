@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { sanitizeMultilineText, sanitizeText } from "../utils/helpers";
+import { Clock, Calendar, CheckCircle2, Target, BookOpen, FileText, CalendarDays } from "lucide-react";
 
 export const SessionModal = ({
   isOpen,
@@ -27,7 +29,6 @@ export const SessionModal = ({
   });
 
   useEffect(() => {
-    // Reset or populate form data based on props
     const defaultDate = new Date().toISOString().split("T")[0];
 
     if (editingSession) {
@@ -100,7 +101,7 @@ export const SessionModal = ({
     ? syllabusItems.filter((item) => item.subjectId === formData.subjectId)
     : [];
 
-  return (
+  return createPortal(
     <div
       className="modal-overlay"
       onClick={(e) => {
@@ -116,260 +117,301 @@ export const SessionModal = ({
         </h2>
 
         <div className="modal-content-scroll">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Subject Select */}
-            <div className="form-group">
-              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
-                Matéria <span className="text-red-500">*</span>
-              </label>
-              <select
-                className="form-select w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
-                value={formData.subjectId}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    subjectId: e.target.value,
-                    syllabusItemId: "",
-                    markTopicStudied: false,
-                  }))
-                }
-                required
-              >
-                <option value="">Selecione uma matéria</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
-              </select>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
+            {/* SEÇÃO 1: O QUE FOI ESTUDADO */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-blue-400 border-b border-blue-500/20 pb-2 mb-2">
+                <BookOpen size={18} />
+                <h3 className="font-semibold text-sm uppercase tracking-wide">O que foi estudado?</h3>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label text-sm text-gray-400 mb-1 block">
+                  Matéria <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="form-select w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors"
+                  value={formData.subjectId}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      subjectId: e.target.value,
+                      syllabusItemId: "",
+                      markTopicStudied: false,
+                    }))
+                  }
+                  required
+                >
+                  <option value="">Selecione uma matéria...</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label text-sm text-gray-400 mb-1 block">
+                  Tópico do Edital
+                </label>
+                <select
+                  className="form-select w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-blue-500 outline-none transition-colors disabled:opacity-50"
+                  value={formData.syllabusItemId}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      syllabusItemId: e.target.value,
+                      markTopicStudied: false,
+                    }))
+                  }
+                  disabled={!formData.subjectId}
+                >
+                  <option value="">(Opcional) Selecione um tópico...</option>
+                  {relevantSyllabusItems.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                      className={item.isStudied ? "text-emerald-400 font-medium" : ""}
+                    >
+                       {item.name} {item.isStudied ? '✓' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
+            {/* SEÇÃO 2: TEMPO E DATA */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Date Input */}
-              <div className="form-group">
-                <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
-                  Data <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, date: e.target.value }))
-                  }
-                  required
-                />
-              </div>
-
-              {/* Duration Input */}
-              <div className="form-group">
-                <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
-                  Duração (h) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
-                  value={formData.duration > 0 ? formData.duration / 60 : ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      duration: parseFloat(e.target.value) * 60 || 0,
-                    }))
-                  }
-                  min="0.1"
-                  placeholder="1.5"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Syllabus Item Select */}
-            <div className="form-group">
-              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
-                Tópico Estudado (opcional)
-              </label>
-              <select
-                className="form-select w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
-                value={formData.syllabusItemId}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    syllabusItemId: e.target.value,
-                    markTopicStudied: false,
-                  }))
-                }
-                disabled={!formData.subjectId}
-              >
-                <option value="">Selecione um tópico</option>
-                {relevantSyllabusItems.map((item) => (
-                  <option
-                    key={item.id}
-                    value={item.id}
-                    style={item.isStudied ? { color: '#10b981', fontWeight: 'bold' } : {}}
-                  >
-                    {item.name} {item.isStudied ? '✓' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <label
-              className={`flex items-center gap-2 cursor-pointer ${!formData.syllabusItemId ? "opacity-60" : ""}`}
-            >
-              <input
-                type="checkbox"
-                className="form-checkbox rounded border-gray-600 text-emerald-500 bg-slate-800 focus:ring-offset-0 focus:ring-emerald-500"
-                checked={formData.markTopicStudied}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    markTopicStudied: e.target.checked,
-                  }))
-                }
-                disabled={!formData.syllabusItemId}
-              />
-              <span className="text-sm text-gray-300">
-                Marcar tópico como concluído
-              </span>
-            </label>
-
-            {/* Accuracy Input */}
-            <div className="form-group">
-              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
-                % de Acerto (opcional)
-              </label>
-              <input
-                type="number"
-                className="form-input w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none"
-                value={formData.accuracy}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    accuracy: parseFloat(e.target.value) || "",
-                  }))
-                }
-                min="0"
-                max="100"
-                placeholder="Ex: 85"
-              />
-            </div>
-
-            {/* Review Toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="form-checkbox rounded border-gray-600 text-blue-600 bg-slate-800 focus:ring-offset-0 focus:ring-blue-500"
-                checked={formData.isReview}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    isReview: e.target.checked,
-                  }))
-                }
-              />
-              <span className="text-sm text-gray-300">Foi apenas revisão?</span>
-            </label>
-
-            {/* Next Review Scheduler */}
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-3">
-                Agendar Próxima Revisão
-              </label>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                {[1, 3, 7, 15, 30].map((days) => (
-                  <button
-                    key={days}
-                    type="button"
-                    onClick={() => {
-                      const nextDate = new Date();
-                      nextDate.setDate(nextDate.getDate() + days);
-                      setFormData((prev) => ({
-                        ...prev,
-                        nextReviewDate: nextDate.toISOString().split("T")[0],
-                        reviewDays: days,
-                        noNextReview: false,
-                      }));
-                    }}
-                    className={`
-                      px-3 py-1 rounded-full text-xs font-medium border transition-colors
-                      ${formData.reviewDays === days
-                        ? "bg-indigo-600 border-indigo-500 text-white"
-                        : "bg-slate-800 border-slate-600 text-gray-400 hover:border-indigo-500 hover:text-indigo-400"
+               <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-400 border-b border-emerald-500/20 pb-2 mb-2">
+                    <Calendar size={18} />
+                    <h3 className="font-semibold text-sm uppercase tracking-wide">Quando?</h3>
+                  </div>
+                   <div className="form-group">
+                    <label className="form-label text-sm text-gray-400 mb-1 block">
+                      Data <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-emerald-500 outline-none"
+                      value={formData.date}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, date: e.target.value }))
                       }
-                    `}
-                  >
-                    {days}d
-                  </button>
-                ))}
-              </div>
+                      required
+                    />
+                  </div>
+               </div>
 
-              {formData.nextReviewDate && !formData.noNextReview && (
-                <div className="text-xs text-indigo-400 font-medium mb-2">
-                  Agendada para:{" "}
-                  {new Date(formData.nextReviewDate).toLocaleDateString(
-                    "pt-BR",
-                  )}
-                </div>
-              )}
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="form-checkbox rounded border-gray-600 text-gray-500 bg-slate-800 focus:ring-offset-0 focus:ring-gray-500"
-                  checked={formData.noNextReview}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      noNextReview: e.target.checked,
-                      nextReviewDate: e.target.checked
-                        ? ""
-                        : prev.nextReviewDate,
-                      reviewDays: e.target.checked ? null : prev.reviewDays,
-                    }))
-                  }
-                />
-                <span className="text-xs text-gray-500">
-                  Não agendar revisão
-                </span>
-              </label>
+               <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-amber-400 border-b border-amber-500/20 pb-2 mb-2">
+                    <Clock size={18} />
+                    <h3 className="font-semibold text-sm uppercase tracking-wide">Duração</h3>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label text-sm text-gray-400 mb-1 block">
+                      Horas Líquidas <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-amber-500 outline-none"
+                      value={formData.duration > 0 ? formData.duration / 60 : ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          duration: parseFloat(e.target.value) * 60 || 0,
+                        }))
+                      }
+                      min="0.1"
+                      placeholder="Ex: 1.5"
+                      required
+                    />
+                  </div>
+               </div>
             </div>
 
-            {/* Notes */}
-            <div className="form-group">
-              <label className="form-label text-sm font-semibold text-gray-300 mb-1 block">
-                Observações
-              </label>
+            {/* SEÇÃO 3: RESULTADO */}
+            <div className="space-y-4">
+               <div className="flex items-center gap-2 text-violet-400 border-b border-violet-500/20 pb-2 mb-2">
+                  <Target size={18} />
+                  <h3 className="font-semibold text-sm uppercase tracking-wide">Desempenho</h3>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                     <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${formData.markTopicStudied ? 'bg-emerald-500/10 border-emerald-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-500'} ${!formData.syllabusItemId ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="mt-0.5">
+                            <input
+                              type="checkbox"
+                              className="form-checkbox rounded text-emerald-500 bg-slate-700 border-slate-500 focus:ring-offset-0 focus:ring-emerald-500"
+                              checked={formData.markTopicStudied}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  markTopicStudied: e.target.checked,
+                                }))
+                              }
+                              disabled={!formData.syllabusItemId}
+                            />
+                        </div>
+                        <div>
+                           <span className={`block text-sm font-medium ${formData.markTopicStudied ? 'text-emerald-400' : 'text-gray-300'}`}>Concluir Tópico</span>
+                           <span className="block text-xs text-gray-500">Marcar este item como estudado no edital</span>
+                        </div>
+                     </label>
+
+                     <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${formData.isReview ? 'bg-blue-500/10 border-blue-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}>
+                        <div className="mt-0.5">
+                             <input
+                              type="checkbox"
+                              className="form-checkbox rounded text-blue-500 bg-slate-700 border-slate-500 focus:ring-offset-0 focus:ring-blue-500"
+                              checked={formData.isReview}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  isReview: e.target.checked,
+                                }))
+                              }
+                            />
+                        </div>
+                        <div>
+                           <span className={`block text-sm font-medium ${formData.isReview ? 'text-blue-400' : 'text-gray-300'}`}>Apenas Revisão</span>
+                           <span className="block text-xs text-gray-500">Não conta como primeiro estudo</span>
+                        </div>
+                     </label>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label text-sm text-gray-400 mb-1 block">
+                      % de Acerto (Questões)
+                    </label>
+                    <div className="relative">
+                        <input
+                          type="number"
+                          className="form-input w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:border-violet-500 outline-none pl-4"
+                          value={formData.accuracy}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              accuracy: parseFloat(e.target.value) || "",
+                            }))
+                          }
+                          min="0"
+                          max="100"
+                          placeholder="Ex: 85"
+                        />
+                        <span className="absolute right-3 top-2.5 text-gray-500">%</span>
+                    </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* SEÇÃO 4: PLANEJAMENTO */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 text-indigo-400 border-b border-indigo-500/20 pb-2 mb-2">
+                  <CalendarDays size={18} />
+                  <h3 className="font-semibold text-sm uppercase tracking-wide">Próxima Revisão</h3>
+               </div>
+
+               <div className="p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {[1, 3, 7, 15, 30].map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() => {
+                          const nextDate = new Date();
+                          nextDate.setDate(nextDate.getDate() + days);
+                          setFormData((prev) => ({
+                            ...prev,
+                            nextReviewDate: nextDate.toISOString().split("T")[0],
+                            reviewDays: days,
+                            noNextReview: false,
+                          }));
+                        }}
+                        className={`
+                          flex-1 min-w-[60px] py-2 rounded-lg text-xs font-semibold border transition-all
+                          ${formData.reviewDays === days
+                            ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/20"
+                            : "bg-slate-800 border-slate-600 text-gray-400 hover:border-indigo-500 hover:text-indigo-400"
+                          }
+                        `}
+                      >
+                        +{days} dias
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                     {formData.nextReviewDate && !formData.noNextReview ? (
+                        <div className="text-sm text-indigo-300 font-medium bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                          Agendada para: <span className="text-white ml-1">{new Date(formData.nextReviewDate).toLocaleDateString("pt-BR")}</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 italic px-2">
+                           Nenhuma data selecionada
+                        </div>
+                      )}
+
+                      <label className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                        <input
+                          type="checkbox"
+                          className="form-checkbox rounded text-gray-500 bg-slate-700 border-slate-600 focus:ring-0"
+                          checked={formData.noNextReview}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              noNextReview: e.target.checked,
+                              nextReviewDate: e.target.checked ? "" : prev.nextReviewDate,
+                              reviewDays: e.target.checked ? null : prev.reviewDays,
+                            }))
+                          }
+                        />
+                        <span className="text-xs font-medium text-gray-400">Não agendar</span>
+                      </label>
+                  </div>
+               </div>
+            </div>
+
+            {/* SEÇÃO 5: OBSERVAÇÕES */}
+            <div className="space-y-4">
+               <div className="flex items-center gap-2 text-gray-400 border-b border-gray-700 pb-2 mb-2">
+                  <FileText size={18} />
+                  <h3 className="font-semibold text-sm uppercase tracking-wide">Observações</h3>
+               </div>
               <textarea
-                className="form-textarea w-full bg-slate-800 border border-slate-600 rounded p-2 text-white focus:border-blue-500 outline-none resize-none h-20 text-sm"
+                className="form-textarea w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-white focus:border-gray-400 outline-none resize-none h-24 text-sm leading-relaxed"
                 value={formData.notes}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, notes: e.target.value }))
                 }
-                placeholder="Detalhes..."
+                placeholder="Detalhes sobre o estudo, dificuldades, pontos de atenção..."
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-700 mt-2">
+            {/* FOOTER */}
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-700/50 mt-2">
               <button
                 type="button"
-                className="btn btn-secondary px-4 py-2 rounded text-sm font-medium text-gray-300 hover:text-white transition-colors"
+                className="btn btn-secondary px-6 py-2.5 rounded-lg text-sm font-medium"
                 onClick={onClose}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="btn btn-primary px-6 py-2 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="btn btn-primary px-8 py-2.5 rounded-lg text-sm font-bold tracking-wide"
               >
-                {editingSession ? "Salvar" : "Registrar"}
+                {editingSession ? "Salvar Alterações" : "Confirmar Sessão"}
               </button>
             </div>
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
