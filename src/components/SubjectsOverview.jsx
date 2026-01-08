@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,8 +11,12 @@ import {
   Trash2,
   CheckSquare,
   Square,
+  Split,
+  AlertCircle,
 } from "lucide-react";
+import parsedEditais from '../data/parsedEditais.json';
 import { saveToLocalStorage } from "../utils/localStorage";
+import Fuse from 'fuse.js';
 
 /* --- MODERN UI STYLES --- */
 const STYLES = `
@@ -35,6 +39,36 @@ const STYLES = `
     --accent-warning: #f59e0b;
     --accent-danger: #ef4444;
     --accent-info: #0ea5e9;
+  }
+
+  /* COMPARISON STYLES */
+  .comparison-pill {
+     font-size: 0.7rem;
+     padding: 2px 6px;
+     border-radius: 4px;
+     font-weight: 700;
+     text-transform: uppercase;
+     white-space: nowrap;
+  }
+  .pill-shared { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+  .pill-exclusive-base { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+  .pill-exclusive-target { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+  .topic-row {
+      display: flex;
+      align-items: flex-start;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      gap: 12px;
+      transition: background 0.2s;
+  }
+  .topic-row:hover { background: rgba(255,255,255,0.02); }
+
+  .topic-row.exclusive-target {
+      background: rgba(245, 158, 11, 0.05);
+  }
+  .topic-row.exclusive-base {
+      background: rgba(16, 185, 129, 0.05);
   }
 
   /* LAYOUT CONTAINER */
@@ -478,14 +512,13 @@ const getAccuracyColor = (accuracy) => {
 };
 
 const getRelativeColor = (value, max) => {
-  if (!max || max === 0) return "#94a3b8"; // Gray if no max
+  if (!max || max === 0) return "#94a3b8";
   const ratio = value / max;
-
-  if (ratio >= 0.9) return "#10b981"; // Top 10% -> Emerald (Green)
-  if (ratio >= 0.7) return "#34d399"; // High -> Light Green
-  if (ratio >= 0.5) return "#facc15"; // Mid -> Yellow
-  if (ratio >= 0.3) return "#fb923c"; // Low-Mid -> Orange
-  return "#ef4444"; // Low -> Red
+  if (ratio >= 0.9) return "#10b981";
+  if (ratio >= 0.7) return "#34d399";
+  if (ratio >= 0.5) return "#facc15";
+  if (ratio >= 0.3) return "#fb923c";
+  return "#ef4444";
 };
 
 const hexToRgba = (hex, alpha = 0.08) => {
@@ -530,7 +563,158 @@ const calculateNextReviewDate = (accuracy) => {
   return today.toISOString().split("T")[0];
 };
 
-/* --- COMPONENTS --- */
+/* --- COMPARISON COMPONENT --- */
+
+// Helper to remove numbers for fuzzy matching ("1. Direito..." -> "Direito...")
+const cleanTextForMatching = (text) => {
+    return text.replace(/^(\d+(\.\d+)*\.?|[IVX]+\s*[-–.]|[a-z]\))\s+/i, '').trim();
+};
+
+const ComparisonSubjectCard = ({
+    subject,
+    userTopics,
+    comparisonTopics,
+    comparisonEditalName
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const mergedTopics = useMemo(() => {
+        const merged = [];
+
+        // 1. Prepare Fuse Index for fuzzy matching
+        // We index comparisonTopics. We search using User Topics.
+        const options = {
+            includeScore: true,
+            keys: ['cleanText', 'nome'],
+            threshold: 0.25, // Lower = stricter. 0.25 allows minor typos/formatting diffs (e.g. n. vs nº)
+            ignoreLocation: true
+        };
+
+        // Pre-process comparison topics for better matching
+        const enrichedComparison = comparisonTopics.map(t => ({
+            ...t,
+            cleanText: cleanTextForMatching(t.nome || t.name)
+        }));
+
+        const fuse = new Fuse(enrichedComparison, options);
+
+        // Track matched comparison IDs to know which are left over
+        const matchedComparisonIds = new Set();
+        const userMap = new Map(); // Use map to prevent duplicates if necessary
+
+        // 2. Iterate User Topics and Match
+        userTopics.forEach(userTopic => {
+            const userClean = cleanTextForMatching(userTopic.name);
+
+            // First check canonical ID if available (ML brain)
+            let matchedTarget = null;
+
+            if (userTopic.canonicalId) {
+                matchedTarget = comparisonTopics.find(t => t.canonicalId === userTopic.canonicalId);
+            }
+
+            // Fallback to Fuzzy Search
+            if (!matchedTarget) {
+                const results = fuse.search(userClean);
+                if (results.length > 0) {
+                    matchedTarget = results[0].item;
+                }
+            }
+
+            if (matchedTarget) {
+                merged.push({
+                    id: userTopic.id,
+                    name: userTopic.name,
+                    status: 'shared',
+                    userTopic,
+                    targetTopic: matchedTarget
+                });
+                matchedComparisonIds.add(matchedTarget.id);
+            } else {
+                merged.push({
+                    id: userTopic.id,
+                    name: userTopic.name,
+                    status: 'base-only',
+                    userTopic,
+                    targetTopic: null
+                });
+            }
+        });
+
+        // 3. Add Remaining Comparison Topics
+        comparisonTopics.forEach(t => {
+            if (!matchedComparisonIds.has(t.id)) {
+                 merged.push({
+                    id: t.id,
+                    name: t.nome || t.name,
+                    status: 'target-only',
+                    userTopic: null,
+                    targetTopic: t
+                });
+            }
+        });
+
+        return merged.sort((a, b) => a.name.localeCompare(b.name));
+
+    }, [userTopics, comparisonTopics]);
+
+    const stats = {
+        shared: mergedTopics.filter(t => t.status === 'shared').length,
+        base: mergedTopics.filter(t => t.status === 'base-only').length,
+        target: mergedTopics.filter(t => t.status === 'target-only').length
+    };
+
+    return (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden mb-4">
+             <div
+                className="p-4 cursor-pointer hover:bg-slate-700/50 transition-colors flex items-center justify-between"
+                onClick={() => setIsExpanded(!isExpanded)}
+             >
+                 <div>
+                     <h3 className="font-bold text-white text-lg">{subject.name}</h3>
+                     <div className="flex gap-2 mt-2">
+                         {stats.shared > 0 && <span className="comparison-pill pill-shared">{stats.shared} Em Comum</span>}
+                         {stats.base > 0 && <span className="comparison-pill pill-exclusive-base">{stats.base} Apenas Meus</span>}
+                         {stats.target > 0 && <span className="comparison-pill pill-exclusive-target">{stats.target} Apenas Edital</span>}
+                     </div>
+                 </div>
+                 <div className="text-slate-400">
+                     {isExpanded ? <ChevronUp /> : <ChevronDown />}
+                 </div>
+             </div>
+
+             {isExpanded && (
+                 <div className="border-t border-slate-700 bg-slate-900/30">
+                     {mergedTopics.map((topic, idx) => (
+                         <div key={`${topic.id}-${idx}`} className={`topic-row ${topic.status === 'target-only' ? 'exclusive-target' : topic.status === 'base-only' ? 'exclusive-base' : ''}`}>
+                             <div className="mt-1">
+                                 {topic.status === 'shared' && <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />}
+                                 {topic.status === 'base-only' && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                                 {topic.status === 'target-only' && <div className="w-2 h-2 rounded-full bg-amber-500" />}
+                             </div>
+                             <div className="flex-1">
+                                 <p className={`text-sm ${topic.status === 'shared' ? 'text-white' : 'text-slate-300'}`}>
+                                     {topic.name}
+                                 </p>
+                                 {topic.status === 'shared' && (
+                                     <p className="text-xs text-slate-500 mt-1">Presente em ambos</p>
+                                 )}
+                                 {topic.status === 'target-only' && (
+                                     <p className="text-xs text-amber-500/70 mt-1">Exclusivo: {comparisonEditalName}</p>
+                                 )}
+                                 {topic.status === 'base-only' && (
+                                     <p className="text-xs text-emerald-500/70 mt-1">Exclusivo: Meus Materiais</p>
+                                 )}
+                             </div>
+                         </div>
+                     ))}
+                 </div>
+             )}
+        </div>
+    );
+};
+
+/* --- NORMAL VIEW COMPONENTS --- */
 
 const SyllabusItem = React.memo(({
   item,
@@ -543,11 +727,9 @@ const SyllabusItem = React.memo(({
   onSaveWeight,
   onSaveAccAndWeight,
   onToggleStudied,
-  maxWeightForSubject, // New prop
+  maxWeightForSubject,
 }) => {
-  const [tempAccuracy, setTempAccuracy] = useState(
-    item.accuracy?.toString() || "",
-  );
+  const [tempAccuracy, setTempAccuracy] = useState(item.accuracy?.toString() || "");
   const [tempWeight, setTempWeight] = useState(item.weight?.toString() || "");
 
   const hierarchyLevel = getHierarchyLevel(item.name);
@@ -555,7 +737,6 @@ const SyllabusItem = React.memo(({
   const isStudied = Boolean(item.isStudied);
   const weightValue = Number(item.weight);
   const hasWeight = !Number.isNaN(weightValue);
-  // Use relative color
   const weightColor = hasWeight ? getRelativeColor(weightValue, maxWeightForSubject) : null;
   const weightStyles = hasWeight
     ? {
@@ -578,13 +759,6 @@ const SyllabusItem = React.memo(({
   };
 
   const displayAccuracy = item.accuracy ?? getSessionAccuracy();
-  // Use relative color for text badge too
-  const weightColors = item.weight
-    ? {
-      bg: hexToRgba(getRelativeColor(item.weight, maxWeightForSubject), 0.1),
-      text: getRelativeColor(item.weight, maxWeightForSubject),
-    }
-    : null;
 
   return (
     <>
@@ -598,10 +772,7 @@ const SyllabusItem = React.memo(({
         <div className="item-content">
           <div className="item-title-row">
             {isStudied && (
-              <span
-                className="item-status-dot is-studied"
-                aria-hidden="true"
-              />
+              <span className="item-status-dot is-studied" aria-hidden="true" />
             )}
             <span className={`item-title ${isSub ? "sub" : "bold"}`}>
               {item.name}
@@ -611,27 +782,13 @@ const SyllabusItem = React.memo(({
 
         <div className="item-actions">
           {displayAccuracy !== undefined && (
-            <div
-              className="badge"
-              style={{
-                backgroundColor: getAccuracyColor(displayAccuracy),
-                color: "#000",
-              }}
-            >
+            <div className="badge" style={{ backgroundColor: getAccuracyColor(displayAccuracy), color: "#000" }}>
               {displayAccuracy}%
             </div>
           )}
 
           {item.weight !== undefined && (
-            <div
-              className="badge"
-              style={{
-                backgroundColor: hasWeight
-                  ? hexToRgba(weightColor, 0.25)
-                  : "rgba(255,255,255,0.1)",
-                color: hasWeight ? weightColor : "#cbd5e1",
-              }}
-            >
+            <div className="badge" style={{ backgroundColor: hasWeight ? hexToRgba(weightColor, 0.25) : "rgba(255,255,255,0.1)", color: hasWeight ? weightColor : "#cbd5e1" }}>
               {item.weight}
             </div>
           )}
@@ -654,9 +811,7 @@ const SyllabusItem = React.memo(({
 
       {isEditing && (
         <div className="edit-mode">
-          <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-            Editar:
-          </span>
+          <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Editar:</span>
           <input
             className="edit-input"
             placeholder="%"
@@ -686,7 +841,6 @@ const SyllabusItem = React.memo(({
           >
             Salvar
           </button>
-
           <button
             className={`btn-action ${isStudied ? "success" : "secondary"}`}
             style={{ padding: "6px", fontSize: "0.8rem", display: "flex", alignItems: "center" }}
@@ -698,7 +852,6 @@ const SyllabusItem = React.memo(({
           >
             {isStudied ? <CheckSquare size={18} /> : <Square size={18} />}
           </button>
-
           <button
             className="btn-action secondary"
             style={{ padding: "6px 12px", fontSize: "0.8rem" }}
@@ -718,13 +871,11 @@ const SubjectCard = React.memo(({
   studySessions,
   isExpanded,
   onToggleExpand,
-  // Actions
   onOpenSession,
   onOpenSyllabus,
   onHistory,
   onEditSubject,
   onDeleteSubject,
-  // Data
   getSubjectStudyTime,
   calculateSubjectProgress,
   onSaveItemAccuracy,
@@ -738,9 +889,7 @@ const SubjectCard = React.memo(({
 
   const subjectItems = syllabusItems.filter((i) => i.subjectId === subject.id);
   const studiedItems = subjectItems.filter((i) => i.isStudied);
-
-  // Calculate Max Weight for this Subject
-  const maxWeight = Math.max(...subjectItems.map(i => Number(i.weight) || 0), 1); // Avoid div by zero
+  const maxWeight = Math.max(...subjectItems.map(i => Number(i.weight) || 0), 1);
 
   const filteredItems = (() => {
     switch (activeFilter) {
@@ -757,14 +906,8 @@ const SubjectCard = React.memo(({
     }
   })();
 
-  const progress = calculateSubjectProgress
-    ? calculateSubjectProgress(subject.id)
-    : 0;
-  const avgAccuracy =
-    studiedItems.length > 0
-      ? studiedItems.reduce((sum, i) => sum + (i.accuracy || 0), 0) /
-      studiedItems.length
-      : 0;
+  const progress = calculateSubjectProgress ? calculateSubjectProgress(subject.id) : 0;
+  const avgAccuracy = studiedItems.length > 0 ? studiedItems.reduce((sum, i) => sum + (i.accuracy || 0), 0) / studiedItems.length : 0;
   const hours = getSubjectStudyTime(subject.id);
 
   return (
@@ -805,60 +948,25 @@ const SubjectCard = React.memo(({
 
       {isExpanded && (
         <div className="expanded-content">
-          {/* Actions Toolbar */}
           <div className="toolbar">
-            <button
-              className="btn-action primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenSession(subject.id);
-              }}
-            >
+            <button className="btn-action primary" onClick={(e) => { e.stopPropagation(); onOpenSession(subject.id); }}>
               <CheckCircle size={16} /> <span>Sessão</span>
             </button>
-            <button
-              className="btn-action secondary"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenSyllabus(subject);
-              }}
-            >
+            <button className="btn-action secondary" onClick={(e) => { e.stopPropagation(); onOpenSyllabus(subject); }}>
               <ListChecks size={16} /> <span>Edital</span>
             </button>
             <div style={{ flex: 1 }} />
-            <button
-              className="btn-action ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                onHistory(subject);
-              }}
-              title="Histórico"
-            >
+            <button className="btn-action ghost" onClick={(e) => { e.stopPropagation(); onHistory(subject); }} title="Histórico">
               <History size={18} />
             </button>
-            <button
-              className="btn-action ghost warning"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditSubject(subject);
-              }}
-              title="Editar"
-            >
+            <button className="btn-action ghost warning" onClick={(e) => { e.stopPropagation(); onEditSubject(subject); }} title="Editar">
               <Edit size={18} />
             </button>
-            <button
-              className="btn-action ghost danger"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteSubject(subject);
-              }}
-              title="Excluir"
-            >
+            <button className="btn-action ghost danger" onClick={(e) => { e.stopPropagation(); onDeleteSubject(subject); }} title="Excluir">
               <Trash2 size={18} />
             </button>
           </div>
 
-          {/* Filters */}
           <div className="filter-bar">
             {[
               { id: "todos", label: "Todos" },
@@ -866,27 +974,15 @@ const SubjectCard = React.memo(({
               { id: "com-revisao", label: "Revisados" },
               { id: "estudados-sem-revisao", label: "Sem Revisão" },
             ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setActiveFilter(f.id)}
-                className={`filter-chip ${activeFilter === f.id ? "active" : ""}`}
-              >
+              <button key={f.id} onClick={() => setActiveFilter(f.id)} className={`filter-chip ${activeFilter === f.id ? "active" : ""}`}>
                 {f.label}
               </button>
             ))}
           </div>
 
-          {/* List */}
           <div className="syllabus-container">
             {filteredItems.length === 0 ? (
-              <div
-                style={{
-                  padding: "24px",
-                  textAlign: "center",
-                  color: "var(--text-secondary)",
-                  fontStyle: "italic",
-                }}
-              >
+              <div style={{ padding: "24px", textAlign: "center", color: "var(--text-secondary)", fontStyle: "italic" }}>
                 Nenhum tópico encontrado.
               </div>
             ) : (
@@ -914,7 +1010,81 @@ const SubjectCard = React.memo(({
   );
 });
 
+/* --- MAIN CONTAINER COMPONENT --- */
+
 export const SubjectsOverview = (props) => {
+    // If comparisonEditalId is present, we divert to the Comparison View
+    if (props.comparisonEditalId) {
+        const targetEdital = parsedEditais.find(e => e.id === props.comparisonEditalId);
+
+        if (!targetEdital) return <div className="text-red-500">Erro: Edital não encontrado.</div>;
+
+        // Group User Subjects
+        const userSubjectsMap = props.subjects.map(s => {
+             const items = props.syllabusItems.filter(i => i.subjectId === s.id);
+             return { ...s, items };
+        });
+
+        // Map Target Subjects
+        const targetSubjectsMap = targetEdital.materias.map(m => {
+            const items = targetEdital.itensEdital.filter(i => i.materiaId === m.id);
+            return { ...m, items, name: m.nome };
+        });
+
+        // Merge logic
+        const mergedSubjects = [];
+        const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const userProcessed = new Set();
+
+        targetSubjectsMap.forEach(targetSub => {
+             const targetNameNorm = normalize(targetSub.name);
+             const matchingUserSub = userSubjectsMap.find(u => normalize(u.name) === targetNameNorm || normalize(u.name).includes(targetNameNorm) || targetNameNorm.includes(normalize(u.name)));
+
+             if (matchingUserSub) {
+                 mergedSubjects.push({
+                     type: 'both',
+                     name: matchingUserSub.name,
+                     userSub: matchingUserSub,
+                     targetSub: targetSub
+                 });
+                 userProcessed.add(matchingUserSub.id);
+             } else {
+                 mergedSubjects.push({
+                     type: 'target-only',
+                     name: targetSub.name,
+                     targetSub: targetSub,
+                     userSub: null
+                 });
+             }
+        });
+
+        userSubjectsMap.forEach(userSub => {
+            if (!userProcessed.has(userSub.id)) {
+                mergedSubjects.push({
+                    type: 'base-only',
+                    name: userSub.name,
+                    userSub: userSub,
+                    targetSub: null
+                });
+            }
+        });
+
+        return (
+            <div className="subjects-container">
+                <style>{STYLES}</style>
+                {mergedSubjects.map((ms, idx) => (
+                    <ComparisonSubjectCard
+                        key={idx}
+                        subject={{ name: ms.name }}
+                        userTopics={ms.userSub ? ms.userSub.items : []}
+                        comparisonTopics={ms.targetSub ? ms.targetSub.items : []}
+                        comparisonEditalName={targetEdital.nome}
+                    />
+                ))}
+            </div>
+        );
+    }
+
   const {
     subjects,
     syllabusItems,
@@ -940,7 +1110,6 @@ export const SubjectsOverview = (props) => {
     onToggleStudied,
   } = props;
 
-  /* Handlers */
   const handleToggle = (id) =>
     setExpandedSubjects((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -1053,7 +1222,6 @@ export const SubjectsOverview = (props) => {
           studySessions={studySessions}
           isExpanded={expandedSubjects[subject.id]}
           onToggleExpand={handleToggle}
-          // Actions
           onOpenSession={(id) => {
             setCurrentSubjectForSession(id);
             setIsSessionModalOpen(true);
@@ -1071,7 +1239,6 @@ export const SubjectsOverview = (props) => {
             setIsSubjectModalOpen(true);
           }}
           onDeleteSubject={handleDeleteClick}
-          // Data Helpers
           getSubjectStudyTime={getSubjectStudyTime}
           calculateSubjectProgress={calculateSubjectProgress}
           onSaveItemAccuracy={handleSaveAcc}

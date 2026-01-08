@@ -55,6 +55,8 @@ export const StudyProvider = ({ children }) => {
       showToast,
       toast,
       deleteSession: studyData.deleteSession,
+      toggleGlobalEditalSelection: studyData.toggleGlobalEditalSelection,
+      selectedGlobalEditalIds: studyData.selectedGlobalEditalIds,
       ...globalTimer // Expose timer methods and state directly
     }}>
       {children}

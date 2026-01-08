@@ -10,6 +10,7 @@ import { Cycle } from "./pages/Cycle";
 import { Schedule } from "./pages/Schedule";
 import { Reports } from "./pages/Reports";
 import { Settings } from "./pages/Settings";
+import EditalLibrary from "./components/EditalLibrary";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="cycle" element={<Cycle />} />
             <Route path="schedule" element={<Schedule />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="editais" element={<EditalLibrary />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
